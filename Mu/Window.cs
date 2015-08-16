@@ -8,6 +8,7 @@ using System.Text;
 using System.Threading.Tasks;
 using IOPath = System.IO.Path;
 using FlatRedBall.Input;
+using FlatRedBall.Gui;
 
 namespace Mu
 {
@@ -16,39 +17,73 @@ namespace Mu
     public class Window
     {
         public string Name; //to find the window easly
-        protected Text mText;
-        protected Sprite mSprite;
-        protected bool mVisible;
+        public Text zText;
+        public Sprite zSprite;
+        public bool zVisible;
         public VoidFunction OnClick;
-        public Window mParent;
-        protected Layer mLayer;
-        public List<Window> mChildren;
-        protected bool mReceivedButtonDown;
-        protected Vector2 mOrigin; //i need this crap to maintain correct offset from origin
-        public Sprite Sprite { get { return mSprite; } }
+        public VoidFunction Hover;
+        public VoidFunction HoverMousedown;
+        public VoidFunction MouseEnter;
+        public VoidFunction MouseLeave;
+        public Window zParent;
+        public Layer zLayer;
+        public List<Window> zChildren;
+        public Vector2 zOrigin; //i need this crap to maintain correct offset from origin
+        public Sprite Sprite { get { return zSprite; } }
+        public bool zModal;
+        public bool Immovable;
 
-        public Window(Window owner = null)
-        {
+        public Window(Window owner = null, bool modal = false, string sprite = "")
+        {            
+            if (owner != null && modal)
+                throw new ArgumentException("Child cannot be modal");
+            Immovable = false;
+            zModal = modal;
             Name = string.Empty;
-            mOrigin = new Vector2(0, 0);
-            mReceivedButtonDown = false;
-            mSprite = SpriteManager.AddSprite(IOPath.Combine(Path.Texture, "pixel.bmp"));
-            mSprite.ColorOperation = ColorOperation.ColorTextureAlpha;
+            zOrigin = new Vector2(0, 0);
+            if (sprite == "")
+                zSprite = SpriteManager.AddSprite(IOPath.Combine(Path.Texture, "pixel.bmp"));
+            else
+                zSprite = SpriteManager.AddSprite(sprite);
+            zSprite.ColorOperation = ColorOperation.ColorTextureAlpha;
             Color = Color.White;
-            mVisible = true;
+            zVisible = true;
             OnClick = delegate () { };
-            mParent = owner;
-            mChildren = new List<Window>();
-            mText = TextManager.AddText(string.Empty, Globals.Font);
-            mText.ColorOperation = ColorOperation.ColorTextureAlpha;
-            mText.AttachTo(mSprite, false);
+            Hover = delegate () { };
+            HoverMousedown = delegate () { };
+            MouseEnter = delegate () { };
+            MouseLeave = delegate () { };
+            zParent = owner;
+            zChildren = new List<Window>();
+            zText = TextManager.AddText(string.Empty, Globals.Font);
+            zText.ColorOperation = ColorOperation.ColorTextureAlpha;
+            zText.AttachTo(zSprite, false);
+            Size = new Vector2(1, 1);
             if (owner == null)
                 InitializeAsTopLevel();
             else
                 InitializeAsChild();
-            SpriteManager.AddToLayer(mSprite, mLayer);
-            TextManager.AddToLayer(mText, mLayer);
-            Size = new Vector2(1, 1);
+            SpriteManager.AddToLayer(zSprite, zLayer);
+            TextManager.AddToLayer(zText, zLayer);            
+        }
+
+        protected void InitializeAsChild()
+        {
+            zLayer = zParent.zLayer;
+            zParent.zChildren.Add(this);
+            Position = zParent.Position;
+        }
+
+        protected void InitializeAsTopLevel()
+        {            
+            zLayer = SpriteManager.AddLayer();
+            if (zModal)
+            {
+                MoveToFront();
+                Globals.GuiManager.AddModalWindow(this);
+            }
+            else
+                Globals.GuiManager.AddWindow(this);
         }
 
         /// <summary>
@@ -58,103 +93,22 @@ namespace Mu
         /// <returns></returns>
         public bool IsHigherThan(Window w)
         {
-            return SpriteManager.Layers.IndexOf(mLayer) > SpriteManager.Layers.IndexOf(w.mLayer);
+            return SpriteManager.Layers.IndexOf(zLayer) > SpriteManager.Layers.IndexOf(w.zLayer);
         }
 
         public void MoveToFront()
         {
-            SpriteManager.MoveToFront(mLayer);
-        }
-
-        public void mClearReceivedClick()
-        {
-            mReceivedButtonDown = false;
-        }
-
-        public void Activity()
-        {
-            if (!mVisible)
-                return;
-            foreach (Window w in mChildren)
-                    w.Activity();
-        }
-
-        protected void InitializeAsChild()
-        {
-            mLayer = mParent.mLayer;            
-            mParent.mChildren.Add(this);
-            mSprite.Position.Z = mParent.mSprite.Position.Z + 0.001f;
-        }
-
-        protected void InitializeAsTopLevel()
-        {
-            mLayer = SpriteManager.AddLayer();
+            SpriteManager.MoveToFront(zLayer);
         }        
-
-        public Vector2 Position
-        {
-            get { return mOrigin; }
-            set
-            {
-                Vector2 diff = value - mOrigin;
-                mOrigin = value;
-                Sprite.Position = new Vector3(mOrigin.X + mSprite.ScaleX,
-                    mOrigin.Y - mSprite.ScaleY, mSprite.Position.Z);
-                foreach (Window w in mChildren)
-                    w.Position += diff;
-            }
-        }
-
-        public Color Color
-        {
-            get { return new Color(mSprite.Red,mSprite.Green,mSprite.Blue,mSprite.Alpha); }
-            set { mSprite.Red = value.R; mSprite.Green = value.G; mSprite.Blue = value.B; mSprite.Alpha = value.A; }
-        }
-
-        public Vector2 Size
-        {
-            get { return new Vector2(mSprite.ScaleX*2, mSprite.ScaleY*2); }
-            set
-            {
-                value.X /= 2;
-                value.Y /= 2;
-                mSprite.ScaleX = value.X;
-                mSprite.ScaleY = value.Y;
-                //realign, position changes which is important to display window correctly
-                Position = Position;
-                //realing text since now windows looks different
-                mText.RelativePosition = new Vector3(-mSprite.ScaleX, mSprite.ScaleY - mText.Height / 2, 0.001f);
-            }
-        }
-
-        public bool Visible
-        {
-            get { return mVisible; }
-            set
-            {
-                mVisible = value;
-                if (value == false)
-                    foreach (Window w in mChildren)
-                        w.Hide();
-                else
-                    foreach (Window w in mChildren)
-                        w.Show();
-            }
-        }
-
-        public float Transparency
-        {
-            get { return mSprite.Alpha; }
-            set { mSprite.Alpha = value; }
-        }
 
         /// <summary>
         /// Recursive show
         /// </summary>
         public void Show()
         {
-            mVisible = true;
-            foreach (Window w in mChildren)
+            zVisible = true;
+            zSprite.Visible = true;
+            foreach (Window w in zChildren)
                 w.Show();
         }
 
@@ -163,22 +117,11 @@ namespace Mu
         /// </summary>
         public void Hide()
         {
-            mVisible = false;
-            foreach (Window w in mChildren)
+            zVisible = false;
+            zSprite.Visible = false;
+            foreach (Window w in zChildren)
                 w.Hide();
-        }
-
-        public string Text
-        {
-            get{ return mText.DisplayText; }
-            set{ mText.DisplayText = value;}
-        }
-
-        public Color TextColor
-        {
-            get { return mText.GetColor(); }
-            set { mText.SetColor(value.R,value.G,value.B); mText.Alpha = value.A; }
-        }
+        }        
 
         /// <summary>
         /// Do stuff like:
@@ -187,18 +130,38 @@ namespace Mu
         /// m in front of he name added to obscure
         /// returns wheter window is being dragged or not
         /// </summary>
-        public bool mExecuteMouseRoutine()
+        public void ExecuteMouseRoutine()
         {
+            Hover();
             if (InputManager.Mouse.ButtonPushed(Mouse.MouseButtons.LeftButton))
+            {
+                if(zParent == null)
+                    Functions.ClipCursorInGameWindow();
                 Focus();
-            if (mParent == null && mReceivedButtonDown && InputManager.Mouse.ButtonDown(Mouse.MouseButtons.LeftButton))
+                Globals.GuiManager.zDoGetWindows = false;
+                Globals.EventManager.AddEvent(ClickRoutine, "WindowMouseRoutine", 0, 0, 0);
+
+            }
+        }
+
+        protected int ClickRoutine()
+        {
+            HoverMousedown();
+            if (zParent != null && !IsUnderCursor())
+            {
+                Globals.GuiManager.zDoGetWindows = true;
+                return 0;
+            }
+            if (!InputManager.Mouse.ButtonDown(Mouse.MouseButtons.LeftButton))
+            {
+                Functions.UnclipCursor();
+                OnClick();
+                Globals.GuiManager.zDoGetWindows = true;
+                return 0;
+            }
+            if (zParent == null && !Immovable)
                 Drag();
-            if (InputManager.Mouse.ButtonReleased(Mouse.MouseButtons.LeftButton))
-                ButtonReleased();            
-            if (mParent != null)
-                return false;
-            else
-                return mReceivedButtonDown;
+            return 1;
         }
 
         /// <summary>
@@ -216,34 +179,49 @@ namespace Mu
         protected void Focus()
         {
             MoveToFront();
-            mReceivedButtonDown = true;
-            Globals.GuiManager.mSetWindowReceivedClick(this);
+        }
+
+        public bool IsUnderCursor()
+        {
+            return Visible && GuiManager.Cursor.IsOn(zSprite);
+        }
+
+        public void InitProps(Vector2 pos, Vector2 size, Color color, string text, Color textColor)
+        {
+            Position = pos;
+            Size = size;
+            Color = color;
+            Text = text;
+            TextColor = textColor;
         }
 
         /// <summary>
-        /// execute onclick if same window received lmb down lmb up (click)
+        /// Centers text, buttons need that
         /// </summary>
-        protected void ButtonReleased()
+        public void CenterText()
         {
-            if(mReceivedButtonDown)
-                OnClick();
-            mReceivedButtonDown = false;
+            zText.HorizontalAlignment = HorizontalAlignment.Center;
+            zText.VerticalAlignment = VerticalAlignment.Center;
+            zText.RelativePosition = new Vector3(0, 0, 0.001f);
         }
 
         /// <summary>
         /// This should be called on top level window, it will clean all children
         /// </summary>
-        public void Destroy()
+        public virtual void Destroy()
         {
-            if (mParent != null)
+            if (zParent != null)
                 throw new AccessViolationException("Window.Destroy() can be called on top level window only");
-            SpriteManager.RemoveSprite(mSprite);
-            TextManager.RemoveText(mText);
-            foreach (Window w in mChildren)
+            SpriteManager.RemoveSprite(zSprite);
+            TextManager.RemoveText(zText);
+            foreach (Window w in zChildren)
                 w.DestroyChild();
-            SpriteManager.RemoveLayer(mLayer);
-            mChildren.Clear();
-            Globals.GuiManager.RemoveWindow(this);
+            SpriteManager.RemoveLayer(zLayer);
+            zChildren.Clear();
+            if (zModal)
+                Globals.GuiManager.RemoveModalWindow(this);
+            else
+                Globals.GuiManager.RemoveWindow(this);
 
         }
 
@@ -252,25 +230,217 @@ namespace Mu
         /// </summary>
         public void DestroyChild()
         {
-            if (mParent == null)
+            if (zParent == null)
                 throw new AccessViolationException("Window.DestroyChild() can be called on child window only");
 
-            SpriteManager.RemoveSprite(mSprite);
-            TextManager.RemoveText(mText);
-            foreach (Window w in mChildren)
+            SpriteManager.RemoveSprite(zSprite);
+            TextManager.RemoveText(zText);
+            foreach (Window w in zChildren)
                 w.DestroyChild();
-            mChildren.Clear();
+            zChildren.Clear();
+        }
+
+        public Vector2 Position
+        {
+            get { return zOrigin; }
+            set
+            {
+                Vector2 diff = value - zOrigin;
+                zOrigin = value;
+                Sprite.Position = new Vector3(zOrigin.X + zSprite.ScaleX,
+                    zOrigin.Y - zSprite.ScaleY, zSprite.Position.Z);
+                foreach (Window w in zChildren)
+                    w.Position += diff;
+            }
+        }
+
+        public Color Color
+        {
+            get { return new Color(zSprite.Red, zSprite.Green, zSprite.Blue, zSprite.Alpha); }
+            set
+            {
+                zSprite.Red = value.R/255f;
+                zSprite.Green = value.G/255f;
+                zSprite.Blue = value.B/255f;
+                zSprite.Alpha = value.A/255f;
+            }
+        }
+
+        public Vector2 Size
+        {
+            get { return new Vector2(zSprite.ScaleX * 2, zSprite.ScaleY * 2); }
+            set
+            {
+                value.X /= 2;
+                value.Y /= 2;
+                zSprite.ScaleX = value.X;
+                zSprite.ScaleY = value.Y;
+                //realign, position changes which is important to display window correctly
+                Position = Position;
+                //realign text since now windows looks different
+                if(zText.HorizontalAlignment == HorizontalAlignment.Left)
+                    zText.RelativePosition = new Vector3(-zSprite.ScaleX, zSprite.ScaleY - zText.Height / 2, 0.001f);
+            }
+        }
+
+        public bool Visible
+        {
+            get { return zVisible; }
+            set
+            {
+                zVisible = value;
+                if (value == false)
+                    Hide();
+                else
+                    Show();
+            }
+        }
+
+        public float Transparency
+        {
+            get { return zSprite.Alpha; }
+            set { zSprite.Alpha = value; }
+        }
+
+        public string Text
+        {
+            get { return zText.DisplayText; }
+            set { zText.DisplayText = value; }
+        }
+
+        public Color TextColor
+        {
+            get { return zText.GetColor(); }
+            set { zText.SetColor(value.R/255f, value.G/255f, value.B/255f); zText.Alpha = value.A/255f; }
         }
     }
 
     public class TextBox : Window
     {
         public VoidFunction OnEnter;
-        private bool mTyping;
+        public uint MaxLength;
 
         public TextBox(Window owner) : base(owner)
         {
+            MaxLength = uint.MaxValue;
             OnEnter = delegate () { };
+            OnClick = StartTyping;
+        }
+
+        public void StartTyping()
+        {
+            Globals.EventManager.AddEvent(TypingRoutine, "TypingRoutine", 0, 0, 0);
+        }
+
+        private int TypingRoutine()
+        {
+            if(Text.Length < MaxLength)
+                Text += InputManager.Keyboard.GetStringTyped();
+            if (Text.Length > 0 && InputManager.Keyboard.KeyTyped(Microsoft.Xna.Framework.Input.Keys.Back))
+                Text = Text.Remove(Text.Length - 1);
+            if (InputManager.Mouse.ButtonPushed(Mouse.MouseButtons.LeftButton))
+                return 0;
+            if (InputManager.Keyboard.KeyPushed(Microsoft.Xna.Framework.Input.Keys.Enter))
+            {
+                OnEnter();
+                return 0;
+            }
+            return 1;
+        }
+    }
+
+    public enum MessageBoxType { OK, YesNo };
+    public enum MessageBoxReturn { OK, YES, NO, Nothing };
+
+    public class MessageBox : Window
+    {
+        public MessageBox(string text, MessageBoxType type = MessageBoxType.OK) : base(null,true)
+        {
+            Position = new Vector2(-7, 5);
+            Size = new Vector2(14, 10);
+            Color = new Color(1, 0, 0, 0.85f);
+            Text = text;
+            zText.VerticalAlignment = VerticalAlignment.Top;
+            TextColor = Color.White;
+            Globals.GuiManager.LastMessageBoxReturn = MessageBoxReturn.Nothing;
+
+            if (type == MessageBoxType.OK)
+                InitOk();
+            else if (type == MessageBoxType.YesNo)
+                InitYesno();
+        }
+
+        private void InitOk()
+        {
+            Window ok = new Window(this);
+            ok.Size = new Vector2(4, 2);
+            ok.Position = Position + new Vector2(5, -7);
+            ok.Text = "OK";
+            ok.CenterText();
+            ok.OnClick = OkClick;
+            ok.TextColor = Color.Black;
+            var e = Globals.EventManager.AddEvent(Escape, "mbescape", 0, 0, 0, EventType.PreEvent);
+            e.MoveToFront();
+        }
+
+        private void InitYesno()
+        {
+            Window yes = new Window(this);
+            yes.Size = new Vector2(4, 2);
+            yes.Position = Position + new Vector2(2, -7);
+            yes.Text = "YES";
+            yes.CenterText();
+            yes.OnClick = YesClick;
+            yes.TextColor = Color.Black;
+
+            Window no = new Window(this);
+            no.Size = new Vector2(4, 2);
+            no.Position = Position + new Vector2(8, -7);
+            no.Text = "NO";
+            no.CenterText();
+            no.OnClick = NoClick;
+            no.TextColor = Color.Black;
+
+            var e = Globals.EventManager.AddEvent(Escape, "mbescape", 0, 0, 0, EventType.PreEvent);
+            e.MoveToFront();
+        }
+
+        public int Escape()
+        {
+            if (InputManager.Keyboard.KeyPushed(Microsoft.Xna.Framework.Input.Keys.Escape))
+            {
+                InputManager.Keyboard.IgnoreKeyForOneFrame(Microsoft.Xna.Framework.Input.Keys.Escape);
+                Globals.GuiManager.LastMessageBoxReturn = MessageBoxReturn.NO;
+                Destroy();
+                return 0;
+            }
+            return 1;
+        }
+
+        private void OkClick()
+        {
+            Globals.EventManager.RemoveEvent("mbescape");
+            Globals.GuiManager.LastMessageBoxReturn = MessageBoxReturn.OK;
+            Destroy();
+        }
+
+        private void YesClick()
+        {
+            Globals.EventManager.RemoveEvent("mbescape");
+            Globals.GuiManager.LastMessageBoxReturn = MessageBoxReturn.YES;
+            Destroy();
+        }
+
+        private void NoClick()
+        {
+            Globals.EventManager.RemoveEvent("mbescape");
+            Globals.GuiManager.LastMessageBoxReturn = MessageBoxReturn.NO;
+            Destroy();
+        }
+
+        public override void Destroy()
+        {
+            base.Destroy();
         }
     }
 }

@@ -80,6 +80,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="GuiManager.cs" />
+    <Compile Include="Hero.cs" />
     <Compile Include="MainMenu.cs" />
     <Compile Include="NetMsgProc.cs" />
     <Compile Include="Console.cs">
@@ -98,6 +99,7 @@
     <Compile Include="Game.cs" />
     <Compile Include="Globals.cs" />
     <Compile Include="Network.cs" />
+    <Compile Include="OptionsMenu.cs" />
     <Compile Include="PrintDebug.cs">
       <SubType>Form</SubType>
     </Compile>

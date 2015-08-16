@@ -10,77 +10,61 @@ namespace Mu
     public class MuGuiManager
     {
         //top level only
-        List<Window> mWindows;
+        private List<Window> zWindows;
         //all windows can be here
-        Window mWindowCursorOwner; //<< window that will execute mouse routine
-        Window mWindowReceivedClick; //<< window that received click, need to store it so it can be cleared properly
-        bool mWindowIsDragged;
+        private Window zWindowCursorOwner; //<< window that will execute mouse routine
+        public bool zDoGetWindows;
+        public MessageBoxReturn LastMessageBoxReturn;
+        private List<Window> zModalWindows;
 
         public MuGuiManager()
         {
-            mWindowReceivedClick = null;
-            mWindowIsDragged = false;
-            mWindows = new List<Window>();
-            mWindowCursorOwner = null;
+            zModalWindows = new List<Window>();
+            zDoGetWindows = true;
+            zWindows = new List<Window>();
+            zWindowCursorOwner = null;
+            LastMessageBoxReturn = MessageBoxReturn.Nothing;
         }
 
         public void AddWindow(Window w)
         {
-            mWindows.Add(w);
-        }
-
-        public void mSetWindowReceivedClick(Window w)
-        {
-            mWindowReceivedClick = w;
+            zWindows.Add(w);
         }
 
         public void RemoveWindow(Window w)
         {
-            mWindows.Remove(w);
+            zWindows.Remove(w);
         }
 
         public void Activity()
         {
-            //doesnt make sense to check for any under cursor staff when
-            //some windows is dragged
-            if (!mWindowIsDragged)
+            Globals.Debug(zWindows.Count, "Windows");
+            Globals.Debug(zModalWindows.Count, "modals");
+            //for modal window, run routine only for the last one
+            if (zModalWindows.Count > 0)
             {
-                GetWindowsUnderCursor();
-                Functions.UnclipCursor();
+                List<Window> list = new List<Window>(1);
+                list.Add(zModalWindows.Last());
+                RecursiveGetWindowUnderCur(list);
             }
-            else
-                Functions.ClipCursorInGameWindow();
-            if (mWindowCursorOwner != null)
-                mWindowIsDragged = mWindowCursorOwner.mExecuteMouseRoutine();
-            foreach (Window w in mWindows)
-                w.Activity();
-        }
-
-        private bool IsWindowUnderCursor(Window w)
-        {
-            return w.Visible && GuiManager.Cursor.IsOn(w.Sprite);
+            else if (zDoGetWindows)
+                RecursiveGetWindowUnderCur(zWindows);
+            if (zWindowCursorOwner != null)
+            {
+                zWindowCursorOwner.ExecuteMouseRoutine();
+                zWindowCursorOwner = null;
+            }
         }
 
         private void RecursiveGetWindowUnderCur(List<Window> win)
         {
             foreach (Window w in win)
-                if (IsWindowUnderCursor(w))
+                if (w.IsUnderCursor())
                 {
                     ShouldReceiveClick(w);
-                    RecursiveGetWindowUnderCur(w.mChildren);
+                    RecursiveGetWindowUnderCur(w.zChildren);
                 }
-        }
-
-        private void GetWindowsUnderCursor()
-        {
-            mWindowCursorOwner = null;
-            RecursiveGetWindowUnderCur(mWindows);
-            if (mWindowReceivedClick != null && mWindowReceivedClick != mWindowCursorOwner)
-            {
-                mWindowReceivedClick.mClearReceivedClick();
-                mWindowReceivedClick = null;
-            }
-        }
+        }        
 
         /// <summary>
         /// Decides  wheter currently detected window under cursor should
@@ -89,19 +73,31 @@ namespace Mu
         /// <param name="w"></param>
         private void ShouldReceiveClick(Window w)
         {
-            if (mWindowCursorOwner == null)
-                mWindowCursorOwner = w;
-            else if (w.mParent == mWindowCursorOwner)
-                mWindowCursorOwner = w;
-            else if (w.IsHigherThan(mWindowCursorOwner))
-                mWindowCursorOwner = w;
+            if (zWindowCursorOwner == null)
+                zWindowCursorOwner = w;
+            else if (w.zParent == zWindowCursorOwner)
+                zWindowCursorOwner = w;
+            else if (w.IsHigherThan(zWindowCursorOwner))
+                zWindowCursorOwner = w;
 
+        }
+
+        public void AddModalWindow(Window w)
+        {
+            zModalWindows.Add(w);
+        }
+
+        public void RemoveModalWindow(Window w)
+        {
+            zModalWindows.Remove(w);
         }
 
         public void Clear()
         {
-            while (mWindows.Count > 0)
-                mWindows.Last().Destroy();
+            while (zWindows.Count > 0)
+                zWindows.Last().Destroy();
+            while (zModalWindows.Count > 0)
+                zModalWindows.Last().Destroy();
         }
     }
 }

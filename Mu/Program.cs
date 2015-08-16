@@ -9,19 +9,19 @@ namespace Mu
         /// </summary>
         static void Main(string[] args)
         {
-            try
-            {
+        //    try
+        //    {
                 Globals.CommandLineArgs = args;
                 using (Game1 game = new Game1())
                 {
                     game.Run();
                 }
-            }
-            catch (Exception e)
-            {
-                HandleException(e);
-                //throw e;
-            }
+            //}
+            //catch (Exception e)
+            //{
+            //    HandleException(e);
+            //    //throw e;
+            //}
         }
 
         private static void HandleException(Exception e)

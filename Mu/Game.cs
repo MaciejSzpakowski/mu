@@ -59,6 +59,7 @@ namespace Mu
 
             FlatRedBallServices.InitializeFlatRedBall(this, graphics);
             FlatRedBallServices.IsWindowsCursorVisible = true;
+            FlatRedBallServices.GraphicsOptions.TextureFilter = Microsoft.Xna.Framework.Graphics.TextureFilter.Point;
             LoadGlobalAssets();
             ScreenManager.Start(Globals.FirstScreen);
 
@@ -69,11 +70,10 @@ namespace Mu
         protected override void Update(GameTime gameTime)
         {
             FlatRedBallServices.Update(gameTime);
-
-            ScreenManager.Activity();
-
             Globals.GameTime = gameTime;
-            Globals.EventManager.Activity();
+            Globals.EventManager.PreActivity();
+            ScreenManager.Activity();
+            Globals.EventManager.PostActivity();
             if(Globals.DebugMode)
                 Globals.PrintDebug.PrintDebugString();
 
