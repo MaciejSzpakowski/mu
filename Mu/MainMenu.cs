@@ -168,6 +168,7 @@ namespace Mu
             public PlayWindow() : base(null, true)
             {
                 InitProps(new Vector2(-11, 5), new Vector2(22, 10), new Color(0.3f, 0.3f, 0.3f, 0.75f), "", Color.White);
+                CloseWithEscape = true;
 
                 zServer = new TextBox(this);
                 zServer.InitProps(Position + new Vector2(1, -1), new Vector2(10, 2), new Color(0.1f, 0.1f, 0.1f, 1), "", Color.White);
