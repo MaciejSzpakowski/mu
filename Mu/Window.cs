@@ -23,21 +23,25 @@ namespace Mu
         public VoidFunction OnClick;
         public VoidFunction Hover;
         public VoidFunction HoverMousedown;
-        public VoidFunction MouseEnter;
         public VoidFunction MouseLeave;
+        public VoidFunction MouseEnter;
         public Window zParent;
         public Layer zLayer;
         public List<Window> zChildren;
-        public Vector2 zOrigin; //i need this crap to maintain correct offset from origin
+        private Vector2 zOrigin; //i need this crap to maintain correct offset from origin
         public Sprite Sprite { get { return zSprite; } }
         public bool zModal;
         public bool Immovable;
+        private Event zEventEscape;
+        protected bool zCollect; //used to signal running events that this window has been destroyed
 
         public Window(Window owner = null, bool modal = false, string sprite = "")
         {            
             if (owner != null && modal)
                 throw new ArgumentException("Child cannot be modal");
+            zCollect = false;
             Immovable = false;
+            zEventEscape = null;
             zModal = modal;
             Name = string.Empty;
             zOrigin = new Vector2(0, 0);
@@ -51,8 +55,8 @@ namespace Mu
             OnClick = delegate () { };
             Hover = delegate () { };
             HoverMousedown = delegate () { };
-            MouseEnter = delegate () { };
             MouseLeave = delegate () { };
+            MouseEnter = delegate () { };
             zParent = owner;
             zChildren = new List<Window>();
             zText = TextManager.AddText(string.Empty, Globals.Font);
@@ -139,20 +143,22 @@ namespace Mu
                     Functions.ClipCursorInGameWindow();
                 Focus();
                 Globals.GuiManager.zDoGetWindows = false;
-                Globals.EventManager.AddEvent(ClickRoutine, "WindowMouseRoutine", 0, 0, 0);
+                Globals.EventManager.AddEvent(ClickRoutine, "WindowMouseRoutine");
 
             }
         }
 
         protected int ClickRoutine()
         {
+            if (zCollect)
+                return 0;
             HoverMousedown();
             if (zParent != null && !IsUnderCursor())
             {
                 Globals.GuiManager.zDoGetWindows = true;
                 return 0;
             }
-            if (!InputManager.Mouse.ButtonDown(Mouse.MouseButtons.LeftButton))
+            if (InputManager.Mouse.ButtonReleased(Mouse.MouseButtons.LeftButton))
             {
                 Functions.UnclipCursor();
                 OnClick();
@@ -210,6 +216,7 @@ namespace Mu
         /// </summary>
         public virtual void Destroy()
         {
+            zCollect = true;
             if (zParent != null)
                 throw new AccessViolationException("Window.Destroy() can be called on top level window only");
             SpriteManager.RemoveSprite(zSprite);
@@ -230,6 +237,7 @@ namespace Mu
         /// </summary>
         public void DestroyChild()
         {
+            zCollect = true;
             if (zParent == null)
                 throw new AccessViolationException("Window.DestroyChild() can be called on child window only");
 
@@ -302,7 +310,7 @@ namespace Mu
             set { zSprite.Alpha = value; }
         }
 
-        public string Text
+        public virtual string Text
         {
             get { return zText.DisplayText; }
             set { zText.DisplayText = value; }
@@ -313,15 +321,47 @@ namespace Mu
             get { return zText.GetColor(); }
             set { zText.SetColor(value.R/255f, value.G/255f, value.B/255f); zText.Alpha = value.A/255f; }
         }
+
+        public bool CloseWithEscape
+        {
+            get { return zEventEscape != null; }
+            set
+            {
+                if (value && zEventEscape == null)
+                {
+                    zEventEscape = Globals.EventManager.AddEvent(zCloseWithEscape, "zclose" + GetHashCode().ToString(),true);
+                }
+                else if (!value && zEventEscape != null)
+                {
+                    Globals.EventManager.RemoveEvent(zEventEscape);
+                    zEventEscape = null;
+                }
+            }
+        }
+
+        private int zCloseWithEscape()
+        {
+            if (zCollect)
+                return 0;
+            if (InputManager.Keyboard.KeyPushed(Microsoft.Xna.Framework.Input.Keys.Escape))
+            {
+                InputManager.Keyboard.IgnoreKeyForOneFrame(Microsoft.Xna.Framework.Input.Keys.Escape);
+                Destroy();                
+                return 0;
+            }
+            return 1;
+        }
     }
 
     public class TextBox : Window
     {
         public VoidFunction OnEnter;
         public uint MaxLength;
+        private char carret;
 
         public TextBox(Window owner) : base(owner)
         {
+            carret = (char)300;
             MaxLength = uint.MaxValue;
             OnEnter = delegate () { };
             OnClick = StartTyping;
@@ -329,23 +369,90 @@ namespace Mu
 
         public void StartTyping()
         {
-            Globals.EventManager.AddEvent(TypingRoutine, "TypingRoutine", 0, 0, 0);
+            Globals.EventManager.AddEvent(TypingRoutine, "TypingRoutine");
         }
 
         private int TypingRoutine()
         {
-            if(Text.Length < MaxLength)
-                Text += InputManager.Keyboard.GetStringTyped();
-            if (Text.Length > 0 && InputManager.Keyboard.KeyTyped(Microsoft.Xna.Framework.Input.Keys.Back))
-                Text = Text.Remove(Text.Length - 1);
-            if (InputManager.Mouse.ButtonPushed(Mouse.MouseButtons.LeftButton))
+            if (zCollect)
                 return 0;
+            CarretActivity();
+            //dont type beyond limit
+            if (InputManager.Keyboard.AnyKeyPushed())
+                RemoveCarret();
+            if (zText.DisplayText.Length < MaxLength)
+            {                
+                zText.DisplayText += InputManager.Keyboard.GetStringTyped();
+            }
+            //backspace if length > 0
+            if (zText.DisplayText.Length > 0 && InputManager.Keyboard.KeyTyped(Microsoft.Xna.Framework.Input.Keys.Back))
+            {
+                zText.DisplayText = zText.DisplayText.Remove(zText.DisplayText.Length - 1);
+            }
+            //end routine if clicked
+            if (InputManager.Mouse.ButtonPushed(Mouse.MouseButtons.LeftButton))
+            {
+                RemoveCarret();
+                return 0;
+            }
+            //onenter
             if (InputManager.Keyboard.KeyPushed(Microsoft.Xna.Framework.Input.Keys.Enter))
             {
+                RemoveCarret();
                 OnEnter();
                 return 0;
             }
             return 1;
+        }
+
+        private void RemoveCarret()
+        {
+            if (zText.DisplayText.Length != 0 && zText.DisplayText.Last() == carret)
+                zText.DisplayText = zText.DisplayText.Remove(zText.DisplayText.Length - 1);
+        }
+
+        private void CarretActivity()
+        {
+            if (Globals.GameTime.TotalGameTime.Milliseconds > 500)
+                AddCarret();
+            else
+                RemoveCarret();
+        }
+
+        private void AddCarret()
+        {
+            if (zText.DisplayText.Length == 0 || zText.DisplayText.Last() != carret)
+                zText.DisplayText += carret.ToString();
+        }
+
+        public override string Text
+        {
+            get
+            {
+                RemoveCarret();
+                return base.Text;
+            }
+
+            set
+            {
+                base.Text = value;
+            }
+        }
+    }
+
+    public class Button : Window
+    {
+        public Button(Window owner, string sprite=""):base(owner,false, sprite)
+        {
+            CenterText();
+            MouseEnter = delegate ()
+            {
+                TextColor = Color.Red;
+            };
+            MouseLeave = delegate ()
+            {
+                TextColor = Color.White;
+            };
         }
     }
 
@@ -372,41 +479,43 @@ namespace Mu
 
         private void InitOk()
         {
-            Window ok = new Window(this);
+            Window ok = new Button(this);
             ok.Size = new Vector2(4, 2);
             ok.Position = Position + new Vector2(5, -7);
             ok.Text = "OK";
+            ok.Color = new Color(0.1f, 0.1f, 0.1f, 1);
             ok.CenterText();
             ok.OnClick = OkClick;
-            ok.TextColor = Color.Black;
-            var e = Globals.EventManager.AddEvent(Escape, "mbescape", 0, 0, 0, EventType.PreEvent);
-            e.MoveToFront();
+            ok.TextColor = Color.White;
+            Globals.EventManager.AddEvent(MbEscape, "mbescape", true);
         }
 
         private void InitYesno()
         {
-            Window yes = new Window(this);
+            Window yes = new Button(this);
             yes.Size = new Vector2(4, 2);
             yes.Position = Position + new Vector2(2, -7);
             yes.Text = "YES";
+            yes.Color = new Color(0.1f, 0.1f, 0.1f, 1);
             yes.CenterText();
             yes.OnClick = YesClick;
-            yes.TextColor = Color.Black;
+            yes.TextColor = Color.White;
 
-            Window no = new Window(this);
+            Window no = new Button(this);
             no.Size = new Vector2(4, 2);
             no.Position = Position + new Vector2(8, -7);
             no.Text = "NO";
+            no.Color = new Color(0.1f, 0.1f, 0.1f, 1);
             no.CenterText();
             no.OnClick = NoClick;
-            no.TextColor = Color.Black;
-
-            var e = Globals.EventManager.AddEvent(Escape, "mbescape", 0, 0, 0, EventType.PreEvent);
-            e.MoveToFront();
+            no.TextColor = Color.White;
+            Globals.EventManager.AddEvent(MbEscape, "mbescape", true);
         }
 
-        public int Escape()
+        private int MbEscape()
         {
+            if (zCollect)
+                return 0;
             if (InputManager.Keyboard.KeyPushed(Microsoft.Xna.Framework.Input.Keys.Escape))
             {
                 InputManager.Keyboard.IgnoreKeyForOneFrame(Microsoft.Xna.Framework.Input.Keys.Escape);
@@ -419,21 +528,18 @@ namespace Mu
 
         private void OkClick()
         {
-            Globals.EventManager.RemoveEvent("mbescape");
             Globals.GuiManager.LastMessageBoxReturn = MessageBoxReturn.OK;
             Destroy();
         }
 
         private void YesClick()
         {
-            Globals.EventManager.RemoveEvent("mbescape");
             Globals.GuiManager.LastMessageBoxReturn = MessageBoxReturn.YES;
             Destroy();
         }
 
         private void NoClick()
         {
-            Globals.EventManager.RemoveEvent("mbescape");
             Globals.GuiManager.LastMessageBoxReturn = MessageBoxReturn.NO;
             Destroy();
         }

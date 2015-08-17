@@ -19,9 +19,8 @@ namespace Mu
         {
             InitProps(new Vector2(-10, 10), new Vector2(20, 20), new Color(0.3f, 0.3f, 0.3f, 0.75f), "Options", Color.White);
 
-            Window closeButton = new Window(this);
+            Window closeButton = new Button(this);
             closeButton.InitProps(Position + new Vector2(1, -1), new Vector2(8, 2), new Color(0.1f, 0.1f, 0.1f, 1), "Back", Color.White);
-            closeButton.CenterText();
             closeButton.OnClick = delegate ()
             {
                 Destroy();

@@ -81,53 +81,40 @@ namespace Mu
             {
                 zHeroClass = HeroClass.Invalid;
                 InitProps(new Vector2(-11, 5), new Vector2(22, 10), new Color(0.3f, 0.3f, 0.3f, 0.75f), "", Color.White);
+                CloseWithEscape = true;
 
                 zNametextbox = new TextBox(this);
                 zNametextbox.InitProps(Position + new Vector2(1, -7), new Vector2(14, 1.5f), new Color(0.1f, 0.1f, 0.1f, 1), "", Color.White);
                 zNametextbox.MaxLength = 18;
 
-                Window elfbutton = new Window(this);
+                Window elfbutton = new Button(this);
                 elfbutton.InitProps(Position + new Vector2(1, -1), new Vector2(4, 2), new Color(0.1f, 0.1f, 0.1f, 1), "Elf", Color.White);
-                elfbutton.CenterText();
                 elfbutton.OnClick = delegate ()
                 {
                     zHeroClass = HeroClass.Elf;
                 };
 
-                Window knightbutton = new Window(this);
+                Window knightbutton = new Button(this);
                 knightbutton.InitProps(elfbutton.Position + new Vector2(5, 0), new Vector2(4, 2), new Color(0.1f, 0.1f, 0.1f, 1), "Knight", Color.White);
-                knightbutton.CenterText();
                 knightbutton.OnClick = delegate ()
                 {
                     zHeroClass = HeroClass.Knight;
                 };
 
-                Window wizardbutton = new Window(this);
+                Window wizardbutton = new Button(this);
                 wizardbutton.InitProps(knightbutton.Position + new Vector2(5, -0), new Vector2(4, 2), new Color(0.1f, 0.1f, 0.1f, 1), "Wizard", Color.White);
-                wizardbutton.CenterText();
                 wizardbutton.OnClick = delegate ()
                 {
                     zHeroClass = HeroClass.Wizard;
                 };
 
-                Window createbutton = new Window(this);
+                Window createbutton = new Button(this);
                 createbutton.InitProps(Position + new Vector2(16.5f, -7.5f), new Vector2(4, 2), new Color(0.1f, 0.1f, 0.1f, 1), "Create", Color.White);
-                createbutton.CenterText();
                 createbutton.OnClick = CreateNewCharacter;
 
                 Window charSprite = new Window(this);
                 charSprite.InitProps(new Vector2(17, 4), new Vector2(4, 4), Color.White, "", Color.White);
                 charSprite.Visible = false;
-                
-                Globals.EventManager.AddEvent(delegate ()
-                {
-                    if (InputManager.Keyboard.KeyPushed(Microsoft.Xna.Framework.Input.Keys.Escape))
-                    {
-                        Destroy();
-                        return 0;
-                    }
-                    return 1;
-                }, "EscapeNewChar", 0, 0, 0);
             }
 
             private void CreateNewCharacter()
@@ -173,23 +160,56 @@ namespace Mu
             }            
         }
 
+        public class PlayWindow : Window
+        {
+            private TextBox zServer;
+            private TextBox zPort;
+
+            public PlayWindow() : base(null, true)
+            {
+                InitProps(new Vector2(-11, 5), new Vector2(22, 10), new Color(0.3f, 0.3f, 0.3f, 0.75f), "", Color.White);
+
+                zServer = new TextBox(this);
+                zServer.InitProps(Position + new Vector2(1, -1), new Vector2(10, 2), new Color(0.1f, 0.1f, 0.1f, 1), "", Color.White);
+
+                zPort = new TextBox(this);
+                zPort.InitProps(Position + new Vector2(1, -4), new Vector2(10, 2), new Color(0.1f, 0.1f, 0.1f, 1), "", Color.White);
+
+                Window playbutton = new Button(this);
+                playbutton.InitProps(Position + new Vector2(1, -7), new Vector2(4, 2), new Color(0.1f, 0.1f, 0.1f, 1), "Play", Color.White);
+
+                Window closebutton = new Button(this);
+                closebutton.InitProps(Position + new Vector2(6, -7), new Vector2(4, 2), new Color(0.1f, 0.1f, 0.1f, 1), "Back", Color.White);
+                closebutton.OnClick = delegate ()
+                {
+                    Destroy();
+                };
+            }
+        }
+
         public class MainWindow : Window
         {
             public MainWindow() : base()
             {
-                InitProps(new Vector2(-21, 16), new Vector2(10, 13), new Color(0.3f, 0.3f, 0.3f, 0.75f), "", Color.White);
+                InitProps(new Vector2(-21, 16), new Vector2(10, 16), new Color(0.3f, 0.3f, 0.3f, 0.75f), "", Color.White);
 
-                Window newCharButton = new Window(this);
+                Window newCharButton = new Button(this);
                 newCharButton.InitProps(Position + new Vector2(1, -1), new Vector2(8, 2), new Color(0.1f, 0.1f, 0.1f, 1), "New Character", Color.White);
-                newCharButton.CenterText();
                 newCharButton.OnClick = delegate ()
                 {
                     new NewCharacterWindow();
                 };
 
-                Window delcharbutton = new Window(this);
-                delcharbutton.InitProps(Position + new Vector2(1, -4), new Vector2(8, 2), new Color(0.1f, 0.1f, 0.1f, 1), "Delete Character", Color.White);
-                delcharbutton.CenterText();
+                Window playbutton = new Button(this);
+                playbutton.InitProps(Position + new Vector2(1, -4), new Vector2(8, 2), new Color(0.1f, 0.1f, 0.1f, 1), "Play", Color.White);                
+                playbutton.Visible = false;
+                playbutton.OnClick = delegate ()
+                {
+                    new PlayWindow();
+                };
+
+                Window delcharbutton = new Button(this);
+                delcharbutton.InitProps(Position + new Vector2(1, -7), new Vector2(8, 2), new Color(0.4f, 0.1f, 0.1f, 1), "Delete Character", Color.White);
                 delcharbutton.Visible = false;
                 delcharbutton.OnClick = delegate ()
                 {
@@ -201,20 +221,19 @@ namespace Mu
                 {
                     MainMenu m = (MainMenu)ScreenManager.CurrentScreen;
                     delcharbutton.Visible = m.zSelectedChar != null;
+                    playbutton.Visible = m.zSelectedChar != null;
                     return 1;
                 }, "delcharbuttonvisibility");
 
-                Window optionsbutton = new Window(this);
-                optionsbutton.InitProps(Position + new Vector2(1, -7), new Vector2(8, 2), new Color(0.1f, 0.1f, 0.1f, 1), "Options", Color.White);
-                optionsbutton.CenterText();
+                Window optionsbutton = new Button(this);
+                optionsbutton.InitProps(Position + new Vector2(1, -10), new Vector2(8, 2), new Color(0.1f, 0.1f, 0.1f, 1), "Options", Color.White);
                 optionsbutton.OnClick = delegate ()
                 {
                     new OptionsMenu();
                 };
 
-                Window exitbutton = new Window(this);
-                exitbutton.InitProps(Position + new Vector2(1, -10), new Vector2(8, 2), new Color(0.1f, 0.1f, 0.1f, 1), "Exit", Color.White);
-                exitbutton.CenterText();
+                Window exitbutton = new Button(this);
+                exitbutton.InitProps(Position + new Vector2(1, -13), new Vector2(8, 2), new Color(0.1f, 0.1f, 0.1f, 1), "Exit", Color.White);
                 exitbutton.OnClick = delegate ()
                 {
                     Globals.Game.Exit();
@@ -294,7 +313,7 @@ namespace Mu
                 else if (Globals.GuiManager.LastMessageBoxReturn == MessageBoxReturn.NO)
                     return 0;
                 return 1;
-            }, "delcharmb", 0, 0, 0);
+            }, "delcharmb");
         }
 
         private void DeleteCharacter()
@@ -332,9 +351,6 @@ namespace Mu
             var cur = new Vector2(InputManager.Mouse.WorldXAt(0), InputManager.Mouse.WorldYAt(0));
             Globals.Debug(cur.X, "x");
             Globals.Debug(cur.Y, "y");
-
-            if (InputManager.Keyboard.KeyDown(Microsoft.Xna.Framework.Input.Keys.A))
-                ScreenManager.CurrentScreen.MoveToScreen(typeof(LevelMap));
         }
     }
 }

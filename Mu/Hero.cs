@@ -26,7 +26,7 @@ namespace Mu
         private Circle zCollider;
         private Sprite zSprite;        
         private Text zLabel;
-        private Sprite zHealthBar;        
+        private Sprite zHealthBar;
         private HeroStats zStats;
 
         //serializable

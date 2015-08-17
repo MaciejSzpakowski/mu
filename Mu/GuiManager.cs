@@ -13,6 +13,7 @@ namespace Mu
         private List<Window> zWindows;
         //all windows can be here
         private Window zWindowCursorOwner; //<< window that will execute mouse routine
+        private Window zLastCursorOwner; //used to execute mouseenter and mouseleave
         public bool zDoGetWindows;
         public MessageBoxReturn LastMessageBoxReturn;
         private List<Window> zModalWindows;
@@ -22,6 +23,7 @@ namespace Mu
             zModalWindows = new List<Window>();
             zDoGetWindows = true;
             zWindows = new List<Window>();
+            zLastCursorOwner = null;
             zWindowCursorOwner = null;
             LastMessageBoxReturn = MessageBoxReturn.Nothing;
         }
@@ -38,9 +40,7 @@ namespace Mu
 
         public void Activity()
         {
-            Globals.Debug(zWindows.Count, "Windows");
-            Globals.Debug(zModalWindows.Count, "modals");
-            //for modal window, run routine only for the last one
+            //for modal window, run this routine only for the last one
             if (zModalWindows.Count > 0)
             {
                 List<Window> list = new List<Window>(1);
@@ -49,11 +49,24 @@ namespace Mu
             }
             else if (zDoGetWindows)
                 RecursiveGetWindowUnderCur(zWindows);
+            MouseEnterLeave();
             if (zWindowCursorOwner != null)
-            {
+            {                
                 zWindowCursorOwner.ExecuteMouseRoutine();
                 zWindowCursorOwner = null;
             }
+        }
+
+        private void MouseEnterLeave()
+        {
+            if (zLastCursorOwner != zWindowCursorOwner)
+            {
+                if (zLastCursorOwner != null)
+                    zLastCursorOwner.MouseLeave();
+                if (zWindowCursorOwner != null)
+                    zWindowCursorOwner.MouseEnter();
+            }
+            zLastCursorOwner = zWindowCursorOwner;
         }
 
         private void RecursiveGetWindowUnderCur(List<Window> win)
