@@ -56,11 +56,11 @@ namespace Mu
                 switch (shero.Class)
                 {
                     case HeroClass.Elf:
-                        return Functions.AddSpriteFromAchx(Path.MakePath(Path.Texture, "elf.achx"));
+                        return Functions.AddSpriteFromAchx(Path.Make(Path.Texture, "elf.achx"));
                     case HeroClass.Knight:
-                        return Functions.AddSpriteFromAchx(Path.MakePath(Path.Texture, "knight.achx"));
+                        return Functions.AddSpriteFromAchx(Path.Make(Path.Texture, "knight.achx"));
                     case HeroClass.Wizard:
-                        return Functions.AddSpriteFromAchx(Path.MakePath(Path.Texture, "wizard.achx"));
+                        return Functions.AddSpriteFromAchx(Path.Make(Path.Texture, "wizard.achx"));
                     default:
                         return null;
                 }
@@ -131,11 +131,11 @@ namespace Mu
                     return;
                 }
 
-                string fileName = Path.MakePath(Path.Save, zNametextbox.Text);
+                string fileName = Path.Make(Path.Save, zNametextbox.Text);
                 fileName = fileName.Replace(" ", "_");
                 fileName += ".hero";
 
-                if (System.IO.File.Exists(Path.MakePath(Path.Save, fileName)))
+                if (System.IO.File.Exists(Path.Make(Path.Save, fileName)))
                 {
                     new MessageBox("This name is taken");
                     return;
@@ -147,6 +147,7 @@ namespace Mu
                 hero.Destroy();
                 MainMenu m = (MainMenu)ScreenManager.CurrentScreen;
                 m.ReloadCharacterList();
+                Destroy();
             }
 
             private bool IsNameValid()
@@ -171,20 +172,44 @@ namespace Mu
                 CloseWithEscape = true;
 
                 zServer = new TextBox(this);
-                zServer.InitProps(Position + new Vector2(1, -1), new Vector2(10, 2), new Color(0.1f, 0.1f, 0.1f, 1), "", Color.White);
+                zServer.InitProps(Position + new Vector2(1, -1), new Vector2(15, 2), new Color(0.1f, 0.1f, 0.1f, 1), "", Color.White);
+                zServer.MaxLength = 30;
 
                 zPort = new TextBox(this);
                 zPort.InitProps(Position + new Vector2(1, -4), new Vector2(10, 2), new Color(0.1f, 0.1f, 0.1f, 1), "", Color.White);
+                zPort.MaxLength = 5;
 
-                Window playbutton = new Button(this);
-                playbutton.InitProps(Position + new Vector2(1, -7), new Vector2(4, 2), new Color(0.1f, 0.1f, 0.1f, 1), "Play", Color.White);
+                Window startbutton = new Button(this);
+                startbutton.InitProps(Position + new Vector2(1, -7), new Vector2(4, 2), new Color(0.1f, 0.1f, 0.1f, 1), "Start", Color.White);
+                startbutton.OnClick = delegate ()
+                {
+                    Globals.Ip = "127.0.0.1";
+                    MainMenu m = (MainMenu)ScreenManager.CurrentScreen;
+                    if(TryPort())
+                        m.Start();
+                };
+
+                Window joinbutton = new Button(this);
+                joinbutton.InitProps(Position + new Vector2(6, -7), new Vector2(4, 2), new Color(0.1f, 0.1f, 0.1f, 1), "Join", Color.White);
+                joinbutton.OnClick = delegate()
+                {
+                    Globals.Ip = zServer.Text;
+                    MainMenu m = (MainMenu)ScreenManager.CurrentScreen;
+                    if (TryPort())
+                        m.Join();
+                };
 
                 Window closebutton = new Button(this);
-                closebutton.InitProps(Position + new Vector2(6, -7), new Vector2(4, 2), new Color(0.1f, 0.1f, 0.1f, 1), "Back", Color.White);
+                closebutton.InitProps(Position + new Vector2(11, -7), new Vector2(4, 2), new Color(0.1f, 0.1f, 0.1f, 1), "Back", Color.White);
                 closebutton.OnClick = delegate ()
                 {
                     Destroy();
                 };
+            }
+
+            private bool TryPort()
+            {
+                return ushort.TryParse(zPort.Text, out Globals.Port);
             }
         }
 
@@ -257,7 +282,19 @@ namespace Mu
             zSelectedChar = null;
             LoadChars();
             //main window
-            new MainWindow();            
+            new MainWindow();
+        }
+
+        public void Start()
+        {
+            Globals.Server.Start(Globals.Port);
+            Join();
+        }
+
+        public void Join()
+        {
+            Globals.Client.Connect(Globals.Ip, Globals.Port);
+            ScreenManager.CurrentScreen.MoveToScreen(typeof(LevelMap));
         }
 
         private void LoadChars()
@@ -295,6 +332,7 @@ namespace Mu
 
         private void SelectCharacter(MenuCharacter m)
         {
+            Globals.HeroFile = m.zFileName;
             if (zSelectedChar != null)
                 zSelectedChar.TextColor = Color.White;
             zSelectedChar = m;

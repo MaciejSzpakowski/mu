@@ -7,7 +7,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
-using IOPath = System.IO.Path;
+using FlatRedBall.Screens;
 
 namespace Mu
 {
@@ -212,7 +212,6 @@ namespace Mu
                     Write("Message sent");
                 }
             });
-
         }
     }
 }

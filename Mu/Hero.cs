@@ -63,11 +63,11 @@ namespace Mu
         private Sprite LoadSprite()
         {
             if (Class == HeroClass.Elf)
-                return Functions.AddSpriteFromAchx(Path.MakePath(Path.Texture, "elf.achx"));
+                return Functions.AddSpriteFromAchx(Path.Make(Path.Texture, "elf.achx"));
             else if (Class == HeroClass.Knight)
-                return Functions.AddSpriteFromAchx(Path.MakePath(Path.Texture, "knight.achx"));
+                return Functions.AddSpriteFromAchx(Path.Make(Path.Texture, "knight.achx"));
             else if (Class == HeroClass.Wizard)
-                return Functions.AddSpriteFromAchx(Path.MakePath(Path.Texture, "wizard.achx"));
+                return Functions.AddSpriteFromAchx(Path.Make(Path.Texture, "wizard.achx"));
             return null;
         }
 
@@ -81,8 +81,10 @@ namespace Mu
             ExpPrevious = 0;
             ExpNext = 100;
             StatPoints = 0;
+            Map = "lorencia.map";
             if (Class == HeroClass.Elf)
             {
+                //Map = "noria.map";
                 Str = 22;
                 Agi = 25;
                 Vit = 20;

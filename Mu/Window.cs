@@ -6,7 +6,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using IOPath = System.IO.Path;
 using FlatRedBall.Input;
 using FlatRedBall.Gui;
 
@@ -46,7 +45,7 @@ namespace Mu
             Name = string.Empty;
             zOrigin = new Vector2(0, 0);
             if (sprite == "")
-                zSprite = SpriteManager.AddSprite(IOPath.Combine(Path.Texture, "pixel.bmp"));
+                zSprite = SpriteManager.AddSprite(Path.Make(Path.Texture, "pixel.bmp"));
             else
                 zSprite = SpriteManager.AddSprite(sprite);
             zSprite.ColorOperation = ColorOperation.ColorTextureAlpha;

@@ -22,6 +22,9 @@ namespace Mu
         public static Type FirstScreen = typeof(MainMenu);
         public static BitmapFont Font = null;
         public static GameTime GameTime = new GameTime();
+        public static string HeroFile = "";
+        public static string Ip = "";
+        public static ushort Port = 0;
 
         //singletons
         public static Client Client = new Client();
@@ -65,7 +68,8 @@ namespace Mu
         public static readonly string Texture = Data;
         public static readonly string Font = Data;
         public static readonly string Save = IOPath.Combine(Root, "saves");
-        public static string MakePath(params string[] paths)
+        public static readonly string Map = Data;
+        public static string Make(params string[] paths)
         {
             return IOPath.Combine(paths);
         }
@@ -148,6 +152,12 @@ namespace Mu
         {
             s.ScaleX *= factor;
             s.ScaleY *= factor;
+        }
+
+        public static void SetScale(this Sprite s, float x, float y)
+        {
+            s.ScaleX = x;
+            s.ScaleY = y;
         }
     }
 
