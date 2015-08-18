@@ -19,6 +19,20 @@ namespace Mu
         private void ProcessMessage(Message msg)
         {
             byte[] data = msg.Data;
+
+            //welcome message
+            if (IsWelcomeMessage(data))
+            {
+
+            }
+        }
+
+        private bool IsWelcomeMessage(byte[] data)
+        {
+            if (data.Length == 3 && data[0] == 1 && data[1] == 2 && data[2] == 3)
+                return true;
+            else
+                return false;
         }
     }
 }

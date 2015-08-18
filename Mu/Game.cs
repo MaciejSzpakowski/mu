@@ -51,6 +51,8 @@ namespace Mu
 
         protected override void Initialize()
         {
+            Path.Init("c:\\bajery\\mu");
+            Path.Init("C:\\Users\\Maciej\\OneDrive\\mu");
             Globals.Game = this;
             if (Globals.CommandLineArgs.Contains("debug"))
                 Globals.DebugMode = true;

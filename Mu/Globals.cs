@@ -63,15 +63,25 @@ namespace Mu
 
     public static class Path
     {
-        public static readonly string Root = "c:\\bajery\\mu";
-        public static readonly string Data = IOPath.Combine(Root, "data");
-        public static readonly string Texture = Data;
-        public static readonly string Font = Data;
-        public static readonly string Save = IOPath.Combine(Root, "saves");
-        public static readonly string Map = Data;
+        public static string Root;
+        public static string Data;
+        public static string Texture;
+        public static string Font;
+        public static string Save;
+        public static string Map;
+
         public static string Make(params string[] paths)
         {
             return IOPath.Combine(paths);
+        }
+        public static void Init(string root)
+        {
+            Root = root;
+            Data = IOPath.Combine(Root, "data");
+            Texture = Data;
+            Font = Data;
+            Save = IOPath.Combine(Root, "saves");
+            Map = Data;
         }
     }
 

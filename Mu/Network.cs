@@ -139,6 +139,8 @@ namespace Mu
                     Globals.Write("New client:" + newClient.IP);
                     newClient.ReceiveThread.Start();
                     mClients.Add(newClient);
+                    //send welcome msg
+                    newClient.SendMessage(new byte[] { 1,2,3 });
                 }
             }
             catch (SocketException se)
@@ -170,7 +172,7 @@ namespace Mu
             mSocket = new TcpClient();
             try
             {
-                mSocket.Connect(host, port);
+                mSocket.Connect(host, port);                
                 mReceiveThread.Start();
             }
             catch (SocketException e)
@@ -181,13 +183,34 @@ namespace Mu
                 //no response (timeout)
                 if (e.ErrorCode == 10060)
                     return false;
+                //server unknown
+                if (e.ErrorCode == 11001)
+                    return false;
                 else
                     throw e;
             }
             Globals.Write("Client connected");
             mState = ClientState.Connected;
+            //wait for welcome message
+            //its needed because in some cases client will report connected even
+            //if it's not
+            if (!GetWelcomeMsg())
+            {
+                Disconnect();
+                return false;
+            }
             return true;
-        }        
+        }
+
+        private bool GetWelcomeMsg()
+        {
+            DateTime start = DateTime.Now;
+            while (DateTime.Now - start < TimeSpan.FromSeconds(5))
+            {
+                Activity();
+            }
+            return false;
+        }
 
         /// <summary>
         /// Disconnect from the server

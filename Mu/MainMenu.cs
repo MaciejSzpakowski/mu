@@ -185,8 +185,10 @@ namespace Mu
                 {
                     Globals.Ip = "127.0.0.1";
                     MainMenu m = (MainMenu)ScreenManager.CurrentScreen;
-                    if(TryPort())
+                    if (TryPort())
                         m.Start();
+                    else
+                        new MessageBox("Invalid port");
                 };
 
                 Window joinbutton = new Button(this);
@@ -197,6 +199,8 @@ namespace Mu
                     MainMenu m = (MainMenu)ScreenManager.CurrentScreen;
                     if (TryPort())
                         m.Join();
+                    else
+                        new MessageBox("Invalid port");
                 };
 
                 Window closebutton = new Button(this);
@@ -287,14 +291,18 @@ namespace Mu
 
         public void Start()
         {
-            Globals.Server.Start(Globals.Port);
-            Join();
+            if(Globals.Server.Start(Globals.Port))
+                new MessageBox("Could start the server");
+            else
+                Join();
         }
 
         public void Join()
         {
-            Globals.Client.Connect(Globals.Ip, Globals.Port);
-            ScreenManager.CurrentScreen.MoveToScreen(typeof(LevelMap));
+            if(Globals.Client.Connect(Globals.Ip, Globals.Port))
+                ScreenManager.CurrentScreen.MoveToScreen(typeof(LevelMap));
+            else
+                new MessageBox("Could not reach the server");
         }
 
         private void LoadChars()
