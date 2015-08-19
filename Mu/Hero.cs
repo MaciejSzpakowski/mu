@@ -52,10 +52,16 @@ namespace Mu
             Class = heroClass;
             zCollider = ShapeManager.AddCircle();
             zCollider.AttachTo(this, false);
+            zCollider.Visible = false;
             zSprite = LoadSprite();
             zSprite.AttachTo(this, false);
+            zSprite.Resize(4);
+            zSprite.AnimationSpeed = 0.1f;
+            Position.Z = ZLayer.Npc;
             zLabel = TextManager.AddText(name, Globals.Font);
             zLabel.AttachTo(this, false);
+            zLabel.HorizontalAlignment = HorizontalAlignment.Center;
+            zLabel.RelativePosition = new Vector3(0, 4, ZLayer.NpcLabel - Position.Z);
 
             InitStats();
         }
@@ -104,6 +110,10 @@ namespace Mu
                 Vit = 15;
                 Ene = 30;
             }
+        }
+
+        public void Activity(bool hero)
+        {
         }
 
         public SaveHero ToSavehero()

@@ -49,7 +49,9 @@ namespace Mu
         private Vector3 StringToVector3(string v)
         {
             Vector3 result = Vector3.Zero;
-            string[] e = v.Split(',', '(', ')');
+            v = v.Replace("(", "");
+            v = v.Replace(")", "");
+            string[] e = v.Split(',');
             if (float.TryParse(e[0], out result.X) && float.TryParse(e[1], out result.Y) && float.TryParse(e[2], out result.Z) == false)
                 throw new ArgumentException("Invalid format");
             return result;
@@ -69,11 +71,27 @@ namespace Mu
         {
         }
 
+        Map zMap;
+
         public override void Initialize(bool addToManagers)
         {
             //i think this should be first
             base.Initialize(addToManagers);
             TestInit();
+            InitHero();
+            InitMap();
+        }
+
+        private void InitMap()
+        {
+            zMap = new Map(Path.Make(Path.Map,Globals.Players[0].Map));
+        }
+
+        private void InitHero()
+        {
+            SaveHero sh = (SaveHero)Functions.Deserialize(Path.Make(Path.Save, Globals.HeroFile));
+            Hero h = sh.ToHero();
+            Globals.Players.Add(h);
         }
 
         public override void Activity(bool firstTimeCalled)
@@ -83,6 +101,9 @@ namespace Mu
             //server and client
             Globals.Server.Activity();
             Globals.Client.Activity();
+            //players
+            for (int i = 0; i < Globals.Players.Count; i++)
+                Globals.Players[i].Activity(i == 0);
 
             //i think this should be at the end
             base.Activity(firstTimeCalled);

@@ -33,12 +33,11 @@ namespace Mu
             mState = ServerState.Stopped;            
             mClients = new List<ServerClient>();
             mAcceptClientsThread = new Thread(new ThreadStart(AcceptClients));
-            mAcceptClientsThread.IsBackground = true;           
+            mAcceptClientsThread.IsBackground = true;
         }
 
         public bool Start(int port)
-        {
-            mState = ServerState.Running;
+        {            
             try
             {
                 mSocket = new TcpListener(IPAddress.Any, port);
@@ -51,6 +50,7 @@ namespace Mu
                     return false;
                 throw se;
             }
+            mState = ServerState.Running;
             Globals.Write("Server started");
             return true;
         }
@@ -135,8 +135,7 @@ namespace Mu
                 while (true)
                 {
                     var newSocket = mSocket.AcceptTcpClient();
-                    var newClient = new ServerClient(newSocket);
-                    Globals.Write("New client:" + newClient.IP);
+                    var newClient = new ServerClient(newSocket);                    
                     newClient.ReceiveThread.Start();
                     mClients.Add(newClient);
                     //send welcome msg
@@ -155,8 +154,13 @@ namespace Mu
     public partial class Client : ServerClient
     {
         private ClientState mState;
+        private bool zReceivedWelcomeMessage;
+        private float zWelcomeMessageTimeout;
+
         public Client() : base(null)
         {
+            zWelcomeMessageTimeout = 2;
+            zReceivedWelcomeMessage = false;
             mState = ClientState.Disconnected;
         }
 
@@ -172,7 +176,9 @@ namespace Mu
             mSocket = new TcpClient();
             try
             {
-                mSocket.Connect(host, port);                
+                mSocket.Connect(host, port);
+                mReceiveThread = new Thread(new ThreadStart(Receive));
+                mReceiveThread.IsBackground = true;
                 mReceiveThread.Start();
             }
             catch (SocketException e)
@@ -205,9 +211,11 @@ namespace Mu
         private bool GetWelcomeMsg()
         {
             DateTime start = DateTime.Now;
-            while (DateTime.Now - start < TimeSpan.FromSeconds(5))
+            while (DateTime.Now - start < TimeSpan.FromSeconds(zWelcomeMessageTimeout))
             {
                 Activity();
+                if (zReceivedWelcomeMessage)
+                    return true;
             }
             return false;
         }
@@ -217,6 +225,7 @@ namespace Mu
         /// </summary>
         public void Disconnect()
         {
+            zReceivedWelcomeMessage = false;
             mState = ClientState.Disconnected;
             if (mSocket.Connected)
                 mSocket.GetStream().Close();
@@ -255,14 +264,14 @@ namespace Mu
         public Thread ReceiveThread { get { return mReceiveThread; } }
 
         public ServerClient(TcpClient client)
-        {
+        {                
             mMsgMutex = new Mutex();
             mMessages = new Queue<Message>();
             mSocket = client;
             if (client != null)
             {
                 mId = client.GetHashCode();
-                mIP = ((IPEndPoint)client.Client.RemoteEndPoint).Address.ToString();
+                mIP = ((IPEndPoint)client.Client.RemoteEndPoint).Address.ToString();                
             }
             else
             {
@@ -309,7 +318,7 @@ namespace Mu
             return result;
         }
 
-        void Receive()
+        protected void Receive()
         {
             List<byte> msgBuffer = new List<byte>();
             while (true)
@@ -360,7 +369,7 @@ namespace Mu
         /// Checks if complete msg has been received and posts it to Messages if it has
         /// </summary>
         /// <param name="msgBuffer"></param>
-        private void CheckAndDispatch(List<byte> msgBuffer)
+        protected void CheckAndDispatch(List<byte> msgBuffer)
         {
             //break if message is not complete
             if (msgBuffer.Count <= msgBuffer[0])
@@ -369,7 +378,7 @@ namespace Mu
             msgBuffer.RemoveRange(0, msgBuffer[0] + 1);
         }
 
-        private void Dispatch(List<byte> msgBuffer)
+        protected void Dispatch(List<byte> msgBuffer)
         {
             var newMsg = new Message();
             newMsg.Data = new byte[msgBuffer[0]];

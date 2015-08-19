@@ -131,7 +131,6 @@ namespace Mu
         /// </summary>
         public void Activity(EventType type)
         {
-            Globals.Debug(zEvents.Count, "events");
             for (int i = zEvents.Count - 1; i >= 0; i--)
             {
                 int result = 1;

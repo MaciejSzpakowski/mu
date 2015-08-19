@@ -24,6 +24,7 @@ namespace Mu
         public static GameTime GameTime = new GameTime();
         public static string HeroFile = "";
         public static string Ip = "";
+        public static List<Hero> Players = new List<Hero>();
         public static ushort Port = 0;
 
         //singletons

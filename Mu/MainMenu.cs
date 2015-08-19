@@ -80,7 +80,7 @@ namespace Mu
             public NewCharacterWindow():base(null,true)
             {
                 zHeroClass = HeroClass.Invalid;
-                InitProps(new Vector2(-11, 5), new Vector2(22, 10), new Color(0.3f, 0.3f, 0.3f, 0.75f), "", Color.White);
+                InitProps(new Vector2(-11, 5), new Vector2(22, 15), new Color(0.3f, 0.3f, 0.3f, 0.75f), "", Color.White);
                 CloseWithEscape = true;
 
                 zNametextbox = new TextBox(this);
@@ -109,8 +109,12 @@ namespace Mu
                 };
 
                 Window createbutton = new Button(this);
-                createbutton.InitProps(Position + new Vector2(16.5f, -7.5f), new Vector2(4, 2), new Color(0.1f, 0.1f, 0.1f, 1), "Create", Color.White);
+                createbutton.InitProps(Position + new Vector2(16.5f, -7), new Vector2(4, 2), new Color(0.1f, 0.1f, 0.1f, 1), "Create", Color.White);
                 createbutton.OnClick = CreateNewCharacter;
+
+                Window backbutton = new Button(this);
+                backbutton.InitProps(createbutton.Position + new Vector2(0, -3), new Vector2(4, 2), new Color(0.1f, 0.1f, 0.1f, 1), "Back", Color.White);
+                backbutton.OnClick = Destroy;
 
                 Window charSprite = new Window(this);
                 charSprite.InitProps(new Vector2(17, 4), new Vector2(4, 4), Color.White, "", Color.White);
@@ -291,10 +295,13 @@ namespace Mu
 
         public void Start()
         {
-            if(Globals.Server.Start(Globals.Port))
+            if (!Globals.Server.Start(Globals.Port))
                 new MessageBox("Could start the server");
             else
+            {
+                Globals.Server.StartAccepting();
                 Join();
+            }
         }
 
         public void Join()

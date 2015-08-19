@@ -22,9 +22,7 @@ namespace Mu
 
             //welcome message
             if (IsWelcomeMessage(data))
-            {
-
-            }
+                Globals.Client.zReceivedWelcomeMessage = true;
         }
 
         private bool IsWelcomeMessage(byte[] data)
