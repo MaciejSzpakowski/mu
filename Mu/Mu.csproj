@@ -20,7 +20,7 @@
     <OutputPath>bin\Debug\</OutputPath>
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
-    <WarningLevel>4</WarningLevel>
+    <WarningLevel>0</WarningLevel>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <PlatformTarget>AnyCPU</PlatformTarget>
@@ -82,7 +82,7 @@
     <Compile Include="GuiManager.cs" />
     <Compile Include="Hero.cs" />
     <Compile Include="MainMenu.cs" />
-    <Compile Include="NetMsgProc.cs" />
+    <Compile Include="NetworkMessages.cs" />
     <Compile Include="Console.cs">
       <SubType>Form</SubType>
     </Compile>

@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Microsoft.Xna.Framework;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -15,6 +16,10 @@ namespace Mu
     public class Message
     {
         public byte[] Data;
+        public bool IsHeader(byte[] msg)
+        {
+            return msg[0] == Data[0];
+        }
     }
 
     public partial class Server
@@ -139,7 +144,7 @@ namespace Mu
                     newClient.ReceiveThread.Start();
                     mClients.Add(newClient);
                     //send welcome msg
-                    newClient.SendMessage(new byte[] { 1,2,3 });
+                    newClient.SendMessage(MsgHeader.Welcome);
                 }
             }
             catch (SocketException se)
@@ -247,6 +252,20 @@ namespace Mu
         }        
     }
 
+    public class ClientHero
+    {
+        public Vector3 Position;
+        public HeroClass Class;
+        public string Name;
+
+        public ClientHero()
+        {
+            Position = Vector3.Zero;
+            Class = HeroClass.Invalid;
+            Name = string.Empty;
+        }
+    }
+
     public class ServerClient
     {
         protected string mIP;
@@ -256,6 +275,7 @@ namespace Mu
         protected string mHeroName;
         protected Queue<Message> mMessages;
         protected Thread mReceiveThread;
+        public ClientHero Hero;
 
         public string IP { get { return mIP; } }
         public TcpClient Socket { get { return mSocket; } }
@@ -271,12 +291,14 @@ namespace Mu
             if (client != null)
             {
                 mId = client.GetHashCode();
-                mIP = ((IPEndPoint)client.Client.RemoteEndPoint).Address.ToString();                
+                mIP = ((IPEndPoint)client.Client.RemoteEndPoint).Address.ToString();
+                Hero = new ClientHero();
             }
             else
             {
                 mId = 0;
                 mIP = string.Empty;
+                Hero = null;
             }
             mHeroName = string.Empty;
             mReceiveThread = new Thread(new ThreadStart(Receive));
@@ -299,6 +321,15 @@ namespace Mu
             NetworkStream ns = mSocket.GetStream();
             ns.Write(msg, 0, msg.Length);
             ns.Flush();
+        }
+
+        /// <summary>
+        /// Send one byte only
+        /// </summary>
+        /// <param name="msg"></param>
+        public void SendMessage(byte msg)
+        {
+            SendMessage(new byte[] { msg });
         }
 
         /// <summary>

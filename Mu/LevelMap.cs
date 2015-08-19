@@ -44,6 +44,7 @@ namespace Mu
             Vector3 scale = StringToVector3(tokens[5]);
             t.zSprite.Position = pos;
             t.zSprite.SetScale(scale.X, scale.Y);
+            zTiles.Add(t);
         }
 
         private Vector3 StringToVector3(string v)
@@ -72,6 +73,7 @@ namespace Mu
         }
 
         Map zMap;
+        List<Event> zEvents;
 
         public override void Initialize(bool addToManagers)
         {
@@ -80,6 +82,30 @@ namespace Mu
             TestInit();
             InitHero();
             InitMap();
+            InitEvents();
+            Globals.Client.SendReady();
+        }
+
+        public void Exit()
+        {
+            Globals.Client.Disconnect();
+            Destroy();
+            ScreenManager.CurrentScreen.MoveToScreen(typeof(MainMenu));
+        }
+
+        private void InitEvents()
+        {
+            zEvents = new List<Event>();
+            // escape event
+            Event e1 = Globals.EventManager.AddEvent(delegate ()
+            {
+                if (InputManager.Keyboard.KeyPushed(Microsoft.Xna.Framework.Input.Keys.Escape))
+                    new MessageBox("Exit ?", MessageBoxType.YesNo, "levelmapexit");
+                if (Globals.GuiManager.GetMbResult(MessageBoxReturn.YES, "levelmapexit"))
+                    Exit();
+                return 1;
+            }, "escapemap");
+            zEvents.Add(e1);
         }
 
         private void InitMap()
@@ -98,12 +124,20 @@ namespace Mu
         {
             //test
             TestActivity();
+            //gui
+            Globals.GuiManager.Activity();
             //server and client
             Globals.Server.Activity();
             Globals.Client.Activity();
             //players
             for (int i = 0; i < Globals.Players.Count; i++)
                 Globals.Players[i].Activity(i == 0);
+            //camera
+            if (Globals.Players.Count > 0)
+            {
+                SpriteManager.Camera.Position.X = Globals.Players[0].X;
+                SpriteManager.Camera.Position.Y = Globals.Players[0].Y;
+            }
 
             //i think this should be at the end
             base.Activity(firstTimeCalled);
@@ -111,6 +145,12 @@ namespace Mu
 
         public override void Destroy()
         {
+            foreach (Event e in zEvents)
+                Globals.EventManager.RemoveEvent(e);
+            foreach (Hero h in Globals.Players)
+                h.Destroy();
+            Globals.Players.Clear();
+            zMap.Destroy();
             base.Destroy();
         }
 

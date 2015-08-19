@@ -27,6 +27,7 @@ namespace Mu
             graphics.IsFullScreen = true;
 #else
             graphics.PreferredBackBufferHeight = 600;
+            graphics.PreferredBackBufferWidth = 800;
 #endif
         }
 
@@ -51,8 +52,8 @@ namespace Mu
 
         protected override void Initialize()
         {
-            Path.Init("c:\\bajery\\mu");
-            //Path.Init("C:\\Users\\Maciej\\OneDrive\\mu");
+            //Path.Init("c:\\bajery\\mu");
+            Path.Init("C:\\Users\\Maciej\\OneDrive\\mu");
             Globals.Game = this;
             if (Globals.CommandLineArgs.Contains("debug"))
                 Globals.DebugMode = true;
@@ -62,6 +63,7 @@ namespace Mu
             FlatRedBallServices.InitializeFlatRedBall(this, graphics);
             FlatRedBallServices.IsWindowsCursorVisible = true;
             FlatRedBallServices.GraphicsOptions.TextureFilter = Microsoft.Xna.Framework.Graphics.TextureFilter.Point;
+            //FlatRedBallServices.GraphicsOptions.SetFullScreen(800, 600);
             LoadGlobalAssets();
             ScreenManager.Start(Globals.FirstScreen);
 

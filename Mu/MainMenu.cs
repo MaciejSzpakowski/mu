@@ -175,12 +175,19 @@ namespace Mu
                 InitProps(new Vector2(-11, 5), new Vector2(22, 10), new Color(0.3f, 0.3f, 0.3f, 0.75f), "", Color.White);
                 CloseWithEscape = true;
 
+                var zServerLabel = new Window(this);
+                zServerLabel.InitProps(Position + new Vector2(1, -1), new Vector2(4, 2), new Color(0.1f, 0.1f, 0.1f, 0), "Server", Color.White);
+
                 zServer = new TextBox(this);
-                zServer.InitProps(Position + new Vector2(1, -1), new Vector2(15, 2), new Color(0.1f, 0.1f, 0.1f, 1), "", Color.White);
+                zServer.InitProps(zServerLabel.Position + new Vector2(5, 0), new Vector2(15, 1.5f), new Color(0.1f, 0.1f, 0.1f, 1), "", Color.White);
                 zServer.MaxLength = 30;
 
+                var portlabel = new Window(this);
+                portlabel.InitProps(Position + new Vector2(1, -4), new Vector2(3, 2), new Color(0.1f, 0.1f, 0.1f, 0), "Port", Color.White);
+
+
                 zPort = new TextBox(this);
-                zPort.InitProps(Position + new Vector2(1, -4), new Vector2(10, 2), new Color(0.1f, 0.1f, 0.1f, 1), "", Color.White);
+                zPort.InitProps(portlabel.Position + new Vector2(5, 0), new Vector2(15, 1.5f), new Color(0.1f, 0.1f, 0.1f, 1), "", Color.White);
                 zPort.MaxLength = 5;
 
                 Window startbutton = new Button(this);
@@ -290,6 +297,8 @@ namespace Mu
             zSelectedChar = null;
             LoadChars();
             //main window
+            Camera.Main.Position.X = 0;
+            Camera.Main.Position.Y = 0;
             new MainWindow();
         }
 
@@ -402,9 +411,6 @@ namespace Mu
 
         public void TestActivity()
         {
-            var cur = new Vector2(InputManager.Mouse.WorldXAt(0), InputManager.Mouse.WorldYAt(0));
-            Globals.Debug(cur.X, "x");
-            Globals.Debug(cur.Y, "y");
         }
     }
 }

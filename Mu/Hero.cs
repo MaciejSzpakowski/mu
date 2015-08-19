@@ -14,7 +14,7 @@ using System.Threading.Tasks;
 
 namespace Mu
 {
-    public enum HeroClass { Elf, Knight, Wizard, Invalid };
+    public enum HeroClass { Elf=0, Knight=1, Wizard=2, Invalid=9 };
 
     public struct HeroStats
     {
@@ -28,6 +28,7 @@ namespace Mu
         private Text zLabel;
         private Sprite zHealthBar;
         private HeroStats zStats;
+        private float zWalkingSpeed;
 
         //serializable
         public HeroClass Class;
@@ -50,6 +51,7 @@ namespace Mu
         {
             Name = name;
             Class = heroClass;
+            SpriteManager.AddPositionedObject(this);
             zCollider = ShapeManager.AddCircle();
             zCollider.AttachTo(this, false);
             zCollider.Visible = false;
@@ -62,6 +64,8 @@ namespace Mu
             zLabel.AttachTo(this, false);
             zLabel.HorizontalAlignment = HorizontalAlignment.Center;
             zLabel.RelativePosition = new Vector3(0, 4, ZLayer.NpcLabel - Position.Z);
+
+            zWalkingSpeed = 10;
 
             InitStats();
         }
@@ -112,8 +116,36 @@ namespace Mu
             }
         }
 
+        public void Input()
+        {
+            //8 directions
+            bool left = InputManager.Keyboard.KeyDown(Microsoft.Xna.Framework.Input.Keys.Left);
+            bool right = InputManager.Keyboard.KeyDown(Microsoft.Xna.Framework.Input.Keys.Right);
+            bool up = InputManager.Keyboard.KeyDown(Microsoft.Xna.Framework.Input.Keys.Up);
+            bool down = InputManager.Keyboard.KeyDown(Microsoft.Xna.Framework.Input.Keys.Down);
+            if (left && up)
+                Velocity = new Vector3(-zWalkingSpeed * 0.707f, zWalkingSpeed * 0.707f, 0);
+            else if (right && up)
+                Velocity = new Vector3(zWalkingSpeed * 0.707f, zWalkingSpeed * 0.707f, 0);
+            else if (right && down)
+                Velocity = new Vector3(zWalkingSpeed * 0.707f, -zWalkingSpeed * 0.707f, 0);
+            else if (left && down)
+                Velocity = new Vector3(-zWalkingSpeed * 0.707f, -zWalkingSpeed * 0.707f, 0);
+            else if (left)
+                Velocity = new Vector3(-zWalkingSpeed, 0, 0);
+            else if (up)
+                Velocity = new Vector3(0, zWalkingSpeed, 0);
+            else if (right)
+                Velocity = new Vector3(zWalkingSpeed, 0, 0);
+            else if (down)
+                Velocity = new Vector3(0, -zWalkingSpeed, 0);
+        }
+
         public void Activity(bool hero)
         {
+            Velocity = Vector3.Zero;            
+            if (hero)
+                Input();
         }
 
         public SaveHero ToSavehero()
@@ -144,6 +176,7 @@ namespace Mu
             SpriteManager.RemoveSprite(zSprite);
             SpriteManager.RemoveSprite(zHealthBar);
             TextManager.RemoveText(zLabel);
+            SpriteManager.RemovePositionedObject(this);
         }
     }
 

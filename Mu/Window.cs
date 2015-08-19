@@ -67,7 +67,8 @@ namespace Mu
             else
                 InitializeAsChild();
             SpriteManager.AddToLayer(zSprite, zLayer);
-            TextManager.AddToLayer(zText, zLayer);            
+            TextManager.AddToLayer(zText, zLayer);
+            zSprite.AttachTo(Camera.Main, true);
         }
 
         protected void InitializeAsChild()
@@ -87,6 +88,11 @@ namespace Mu
             }
             else
                 Globals.GuiManager.AddWindow(this);
+        }
+
+        public virtual void Activity()
+        {
+
         }
 
         /// <summary>
@@ -138,7 +144,7 @@ namespace Mu
             Hover();
             if (InputManager.Mouse.ButtonPushed(Mouse.MouseButtons.LeftButton))
             {
-                if(zParent == null)
+                if (zParent == null)
                     Functions.ClipCursorInGameWindow();
                 Focus();
                 Globals.GuiManager.zDoGetWindows = false;
@@ -254,8 +260,8 @@ namespace Mu
             {
                 Vector2 diff = value - zOrigin;
                 zOrigin = value;
-                Sprite.Position = new Vector3(zOrigin.X + zSprite.ScaleX,
-                    zOrigin.Y - zSprite.ScaleY, zSprite.Position.Z);
+                Sprite.RelativePosition = new Vector3(zOrigin.X + zSprite.ScaleX,
+                    zOrigin.Y - zSprite.ScaleY, zSprite.Position.Z - 40);
                 foreach (Window w in zChildren)
                     w.Position += diff;
             }
@@ -460,7 +466,7 @@ namespace Mu
 
     public class MessageBox : Window
     {
-        public MessageBox(string text, MessageBoxType type = MessageBoxType.OK) : base(null,true)
+        public MessageBox(string text, MessageBoxType type = MessageBoxType.OK, string msg = "") : base(null,true)
         {
             Position = new Vector2(-7, 5);
             Size = new Vector2(14, 10);
@@ -469,6 +475,7 @@ namespace Mu
             zText.VerticalAlignment = VerticalAlignment.Top;
             TextColor = Color.White;
             Globals.GuiManager.LastMessageBoxReturn = MessageBoxReturn.Nothing;
+            Globals.GuiManager.LastMbMessage = msg;
 
             if (type == MessageBoxType.OK)
                 InitOk();

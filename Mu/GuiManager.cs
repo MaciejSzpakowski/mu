@@ -17,9 +17,11 @@ namespace Mu
         public bool zDoGetWindows;
         public MessageBoxReturn LastMessageBoxReturn;
         private List<Window> zModalWindows;
+        public string LastMbMessage;
 
         public MuGuiManager()
         {
+            LastMbMessage = string.Empty;
             zModalWindows = new List<Window>();
             zDoGetWindows = true;
             zWindows = new List<Window>();
@@ -55,6 +57,11 @@ namespace Mu
                 zWindowCursorOwner.ExecuteMouseRoutine();
                 zWindowCursorOwner = null;
             }
+        }
+
+        public bool GetMbResult(MessageBoxReturn result, string msg)
+        {
+            return result == LastMessageBoxReturn && msg == LastMbMessage;
         }
 
         private void MouseEnterLeave()
@@ -107,6 +114,8 @@ namespace Mu
 
         public void Clear()
         {
+            LastMessageBoxReturn = MessageBoxReturn.Nothing;
+            LastMbMessage = string.Empty;
             while (zWindows.Count > 0)
                 zWindows.Last().Destroy();
             while (zModalWindows.Count > 0)
