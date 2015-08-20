@@ -29,6 +29,8 @@ namespace Mu
         private Sprite zHealthBar;
         private HeroStats zStats;
         private float zWalkingSpeed;
+        public int Netid;
+        private Vector3 zLastPosition;
 
         //serializable
         public HeroClass Class;
@@ -49,6 +51,8 @@ namespace Mu
 
         public Hero(string name, HeroClass heroClass)
         {
+            zLastPosition = Position;
+            Netid = 0;
             Name = name;
             Class = heroClass;
             SpriteManager.AddPositionedObject(this);
@@ -143,9 +147,26 @@ namespace Mu
 
         public void Activity(bool hero)
         {
-            Velocity = Vector3.Zero;            
+            Velocity = Vector3.Zero;
             if (hero)
+            {
                 Input();
+            }
+        }
+
+        public void StartUpdatingPos()
+        {
+            Globals.EventManager.AddEvent(UpdatePos, "updatepos", false, 0, 0, 0.3f);
+        }
+
+        private int UpdatePos()
+        {
+            if (zLastPosition != Position)
+            {
+                Globals.Client.SendPos(Position.X, Position.Y);
+                zLastPosition = Position;
+            }
+            return 1;
         }
 
         public SaveHero ToSavehero()
@@ -172,6 +193,7 @@ namespace Mu
 
         public void Destroy()
         {
+            Globals.EventManager.RemoveEvent("updatepos");
             ShapeManager.Remove(zCollider);
             SpriteManager.RemoveSprite(zSprite);
             SpriteManager.RemoveSprite(zHealthBar);

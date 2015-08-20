@@ -84,6 +84,7 @@ namespace Mu
             InitMap();
             InitEvents();
             Globals.Client.SendReady();
+            Globals.Players[0].StartUpdatingPos();
         }
 
         public void Exit()

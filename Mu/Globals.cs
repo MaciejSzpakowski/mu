@@ -170,6 +170,59 @@ namespace Mu
             s.ScaleX = x;
             s.ScaleY = y;
         }
+
+        /// <summary>
+        /// Get array of bytes and reinterprets it as array of objects
+        /// order of objects has to be provided as format string
+        /// elements:b - bool, c - char/byte, i - int, f - float, s - string
+        /// </summary>
+        /// <param name="elements"></param>
+        /// <returns></returns>
+        public static object[] GetData(byte[] sourceArray, string elements)
+        {
+            //start at 1 because 0 is header
+            int sourceIndex = 1;
+            int destinationIndex = 0;
+            object[] result = new object[elements.Length];
+            for (int i = 0; i < elements.Length; i++)
+            {
+                if (elements[i] == 'b')
+                {
+                    result[destinationIndex] = sourceArray[sourceIndex] == 0 ? false : true;
+                    sourceIndex++;
+                    destinationIndex++;
+                }
+                else if (elements[i] == 'c')
+                {
+                    result[destinationIndex] = sourceArray[sourceIndex];
+                    sourceIndex++;
+                    destinationIndex++;
+                }
+                else if (elements[i] == 'i')
+                {
+                    result[destinationIndex] = BitConverter.ToInt32(sourceArray, sourceIndex);
+                    sourceIndex += 4;
+                    destinationIndex++;
+                }
+                else if (elements[i] == 'f')
+                {
+                    result[destinationIndex] = BitConverter.ToSingle(sourceArray, sourceIndex);
+                    sourceIndex += 4;
+                    destinationIndex++;
+                }
+                else if (elements[i] == 's')
+                {
+                    int strLen = Convert.ToInt32(sourceArray[sourceIndex]);
+                    sourceIndex++;
+                    result[destinationIndex] = System.Text.Encoding.ASCII.GetString(sourceArray, sourceIndex, strLen);
+                    sourceIndex += strLen;
+                    destinationIndex++;
+                }
+                else
+                    throw new ArgumentException("ReadMessage(), unrecognized char");
+            }
+            return result;
+        }
     }
 
     public static class Rng

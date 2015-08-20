@@ -24,29 +24,33 @@ namespace Mu
 
     public partial class Server
     {
-        private ServerState mState;
-        private TcpListener mSocket;
-        private List<ServerClient> mClients;
-        private Thread mAcceptClientsThread;
+        private ServerState zState;
+        private Mutex zClientMutex;
+        private TcpListener zSocket;
+        private List<ServerClient> zClients;
+        private Thread zAcceptClientsThread;
+        private int zNextId;
 
-        public ServerState State { get { return mState; } }
-        public int ClientCount { get { return mClients.Count; } }
+        public ServerState State { get { return zState; } }
+        public int ClientCount { get { return zClients.Count; } }
 
         public Server()
         {
-            mSocket = null;
-            mState = ServerState.Stopped;            
-            mClients = new List<ServerClient>();
-            mAcceptClientsThread = new Thread(new ThreadStart(AcceptClients));
-            mAcceptClientsThread.IsBackground = true;
+            zNextId = 1;
+            zClientMutex = new Mutex();
+            zSocket = null;
+            zState = ServerState.Stopped;            
+            zClients = new List<ServerClient>();
+            zAcceptClientsThread = new Thread(new ThreadStart(AcceptClients));
+            zAcceptClientsThread.IsBackground = true;
         }
 
         public bool Start(int port)
         {            
             try
             {
-                mSocket = new TcpListener(IPAddress.Any, port);
-                mSocket.Start();
+                zSocket = new TcpListener(IPAddress.Any, port);
+                zSocket.Start();
             }
             catch (SocketException se)
             {
@@ -55,7 +59,7 @@ namespace Mu
                     return false;
                 throw se;
             }
-            mState = ServerState.Running;
+            zState = ServerState.Running;
             Globals.Write("Server started");
             return true;
         }
@@ -66,9 +70,16 @@ namespace Mu
         public void StartAccepting()
         {
             Globals.Write("Server now accepting");
-            mAcceptClientsThread.Start();
+            zAcceptClientsThread.Start();
         }
 
+        public int GetNextId()
+        {
+            int result = zNextId;
+            zNextId++;
+            return zNextId;
+        }
+        
         /// <summary>
         /// Stop accepting new clients (but dont stop server)
         /// </summary>
@@ -83,31 +94,38 @@ namespace Mu
         /// </summary>
         public void Activity()
         {
-            Globals.Debug(mClients.Count,"Server client count");
-            Globals.Debug(mAcceptClientsThread.ThreadState, "Accepting thread");
-            for (int i = mClients.Count - 1; i >= 0; i--)
+            Globals.Debug(zClients.Count,"Server client count");
+            Globals.Debug(zAcceptClientsThread.ThreadState, "Accepting thread");
+            for (int i = zClients.Count - 1; i >= 0; i--)
             {
-                Globals.Debug(mClients[i].ReceiveThread.ThreadState, "Client " + i.ToString() + " receiving thread");
-                var msg = DequeueMessage(mClients[i]);
+                Globals.Debug(zClients[i].ReceiveThread.ThreadState, "Client " + i.ToString() + " receiving thread");
+                var msg = DequeueMessage(zClients[i]);
                 if(msg != null)
-                    ProcessMessage(msg, mClients[i]);
-                if (mClients[i].ReceiveThread.ThreadState == ThreadState.Stopped)
-                {
-                    Globals.Write(mClients[i].IP + " disconnected");
-                    mClients[i].Socket.Close();
-                    mClients.RemoveAt(i);
-                }
+                    ProcessMessage(msg, zClients[i]);
+                if (zClients[i].ReceiveThread.ThreadState == ThreadState.Stopped)
+                    RemoveClient(zClients[i]);
             }
+        }
+
+        public void RemoveClient(ServerClient c)
+        {
+            Globals.Write(c.IP + " disconnected");
+            foreach (var c1 in zClients.Where(c2 => c2 != c))
+                c1.SendRemovePlayer(c);
+            c.Socket.Close();
+            zClientMutex.WaitOne();
+            zClients.Remove(c);
+            zClientMutex.ReleaseMutex();
         }
 
         /// <summary>
         /// Send message to all clients
         /// </summary>
         /// <param name="message">bytes to send</param>
-        public void SendAll(byte[] message)
+        public void SendAll(params object[] obj)
         {
-            foreach (ServerClient c in mClients)
-                c.SendMessage(message);
+            foreach (ServerClient c in zClients)
+                c.SendMessage(obj);
         }
 
         /// <summary>
@@ -123,11 +141,11 @@ namespace Mu
         public void Stop()
         {
             Globals.Write("Server stopped");
-            mState = ServerState.Stopped;
-            mSocket.Stop();
-            foreach (ServerClient c in mClients)
+            zState = ServerState.Stopped;
+            zSocket.Stop();
+            foreach (ServerClient c in zClients)
                 c.Socket.Close();
-            mClients.Clear();
+            zClients.Clear();
         }
 
         /// <summary>
@@ -139,17 +157,22 @@ namespace Mu
             {
                 while (true)
                 {
-                    var newSocket = mSocket.AcceptTcpClient();
-                    var newClient = new ServerClient(newSocket);                    
+                    var newSocket = zSocket.AcceptTcpClient();
+                    var newClient = new ServerClient(newSocket);
+                    newClient.zId = GetNextId();
+                    newClient.zNetidBytes = BitConverter.GetBytes(newClient.zId);
+                    newClient.Hero.Netid = newClient.Id;
                     newClient.ReceiveThread.Start();
-                    mClients.Add(newClient);
+                    zClientMutex.WaitOne();
+                    zClients.Add(newClient);
+                    zClientMutex.ReleaseMutex();
                     //send welcome msg
                     newClient.SendMessage(MsgHeader.Welcome);
                 }
             }
             catch (SocketException se)
             {
-                if (se.ErrorCode == 10004 && mState == ServerState.Stopped) { }
+                if (se.ErrorCode == 10004 && zState == ServerState.Stopped) { }
                 else
                     throw se;
             }
@@ -178,13 +201,13 @@ namespace Mu
         /// <param name="port"></param>
         public bool Connect(string host, int port)
         {
-            mSocket = new TcpClient();
+            zSocket = new TcpClient();
             try
             {
-                mSocket.Connect(host, port);
-                mReceiveThread = new Thread(new ThreadStart(Receive));
-                mReceiveThread.IsBackground = true;
-                mReceiveThread.Start();
+                zSocket.Connect(host, port);
+                zReceiveThread = new Thread(new ThreadStart(Receive));
+                zReceiveThread.IsBackground = true;
+                zReceiveThread.Start();
             }
             catch (SocketException e)
             {
@@ -232,22 +255,22 @@ namespace Mu
         {
             zReceivedWelcomeMessage = false;
             mState = ClientState.Disconnected;
-            if (mSocket.Connected)
-                mSocket.GetStream().Close();
-            mSocket.Close();
+            if (zSocket.Connected)
+                zSocket.GetStream().Close();
+            zSocket.Close();
             Globals.Write("Client disconnected");
         }
 
         public void Activity()
         {
-            Globals.Debug(Globals.Client.mReceiveThread.ThreadState,"Client receiver");
+            Globals.Debug(Globals.Client.zReceiveThread.ThreadState,"Client receiver");
             //early break
             if (mState == ClientState.Disconnected)
                 return;
             var msg = mDequeueMessage();
             if (msg != null)
                 ProcessMessage(msg);
-            if (mState == ClientState.Connected && mReceiveThread.ThreadState == ThreadState.Stopped)
+            if (mState == ClientState.Connected && zReceiveThread.ThreadState == ThreadState.Stopped)
                 Disconnect();
         }        
     }
@@ -257,79 +280,133 @@ namespace Mu
         public Vector3 Position;
         public HeroClass Class;
         public string Name;
+        public int Netid;
 
         public ClientHero()
         {
             Position = Vector3.Zero;
             Class = HeroClass.Invalid;
             Name = string.Empty;
+            Netid = 0;
         }
     }
 
-    public class ServerClient
+    public partial class ServerClient
     {
-        protected string mIP;
-        protected Mutex mMsgMutex;
-        protected TcpClient mSocket;
-        protected int mId;
-        protected string mHeroName;
-        protected Queue<Message> mMessages;
-        protected Thread mReceiveThread;
+        protected string zIP;
+        protected Mutex zMsgMutex;
+        protected TcpClient zSocket;
+        public int zId;
+        protected Queue<Message> zMessages;
+        protected Thread zReceiveThread;
         public ClientHero Hero;
+        public byte[] zNetidBytes;
 
-        public string IP { get { return mIP; } }
-        public TcpClient Socket { get { return mSocket; } }
-        public int Id { get { return mId; } }
-        public string HeroName { get { return mHeroName; } }
-        public Thread ReceiveThread { get { return mReceiveThread; } }
+        public string IP { get { return zIP; } }
+        public TcpClient Socket { get { return zSocket; } }
+        public int Id { get { return zId; } }
+        public Thread ReceiveThread { get { return zReceiveThread; } }
 
         public ServerClient(TcpClient client)
         {                
-            mMsgMutex = new Mutex();
-            mMessages = new Queue<Message>();
-            mSocket = client;
+            zMsgMutex = new Mutex();
+            zMessages = new Queue<Message>();
+            zSocket = client;
             if (client != null)
             {
-                mId = client.GetHashCode();
-                mIP = ((IPEndPoint)client.Client.RemoteEndPoint).Address.ToString();
+                zIP = ((IPEndPoint)client.Client.RemoteEndPoint).Address.ToString();
                 Hero = new ClientHero();
             }
             else
             {
-                mId = 0;
-                mIP = string.Empty;
+                zId = 0;
+                zIP = string.Empty;
                 Hero = null;
             }
-            mHeroName = string.Empty;
-            mReceiveThread = new Thread(new ThreadStart(Receive));
-            mReceiveThread.IsBackground = true;
+            zReceiveThread = new Thread(new ThreadStart(Receive));
+            zReceiveThread.IsBackground = true;
         }
 
         /// <summary>
-        /// Sends message, in Mu first byte is length of th message, its added by this function
-        /// so you dont have to do it
+        /// Send message wrapper
+        /// </summary>
+        /// <param name="elements"></param>
+        /// <returns></returns>
+        public void SendMessage(params object[] elements)
+        {
+            int length = GetSize(elements) + 1;
+            byte[] msg = new byte[length];
+            //start writing at one because 0th byte carries length
+            int index = 1;
+            msg[0] = (byte)(length - 1);
+            for (int i = 0; i < elements.Length; i++)
+            {
+                //byte/char
+                if (elements[i] is byte || elements[i] is char)
+                {
+                    msg[index] = Convert.ToByte(elements[i]);
+                    index++;
+                }
+                //bool
+                else if (elements[i] is bool)
+                {
+                    msg[index] = (bool)elements[i] ? (byte)1 : (byte)0;
+                    index++;
+                }
+                //string
+                else if (elements[i] is string)
+                {
+                    byte strLen = (byte)((string)elements[i]).Length;
+                    msg[index] = strLen;
+                    index++;
+                    Array.Copy(Encoding.ASCII.GetBytes((string)elements[i]), 0, msg, index, ((string)elements[i]).Length);
+                    index += ((string)elements[i]).Length;
+                }
+                //int
+                else if (elements[i] is int)
+                {
+                    Array.Copy(BitConverter.GetBytes((int)elements[i]), 0, msg, index, 4);
+                    index += 4;
+                }
+                //float
+                else if (elements[i] is float)
+                {
+                    Array.Copy(BitConverter.GetBytes((float)elements[i]), 0, msg, index, 4);
+                    index += 4;
+                }
+            }
+            zSendMessage(msg);
+        }
+
+        private static int GetSize(params object[] obj)
+        {
+            int length = 0;
+            for (int i = 0; i < obj.Length; i++)
+            {
+                if (obj[i] is byte || obj[i] is char || obj[i] is bool)
+                    length++;
+                else if (obj[i] is string)
+                    length += ((string)obj[i]).Length + 1; //extra 1 is to code length before string its one byte so max length is 255
+                else if (obj[i] is int)
+                    length += 4;
+                else if (obj[i] is float)
+                    length += 4;
+                else
+                    throw new ArgumentException("Unrecognizable type");
+            }
+            return length;
+        }
+
+        /// <summary>
+        /// Sends message, first byte is length of the message
         /// </summary>
         /// <param name="message"></param>
-        public void SendMessage(byte[] message)
+        public void zSendMessage(byte[] message)
         {
-            //append length
-            byte[] bytes = message;
-            byte[] msg = new byte[message.Length + 1];
-            msg[0] = (byte)message.Length;
-            Array.Copy(message, 0, msg, 1, message.Length);
             //write to network stream
-            NetworkStream ns = mSocket.GetStream();
-            ns.Write(msg, 0, msg.Length);
+            NetworkStream ns = zSocket.GetStream();
+            ns.Write(message, 0, message.Length);
             ns.Flush();
-        }
-
-        /// <summary>
-        /// Send one byte only
-        /// </summary>
-        /// <param name="msg"></param>
-        public void SendMessage(byte msg)
-        {
-            SendMessage(new byte[] { msg });
         }
 
         /// <summary>
@@ -341,11 +418,11 @@ namespace Mu
         {
             //break if there is nothing to read
             Message result = null;
-            if (mMessages.Count == 0)
+            if (zMessages.Count == 0)
                 return null;
-            mMsgMutex.WaitOne();
-            result = mMessages.Dequeue();
-            mMsgMutex.ReleaseMutex();
+            zMsgMutex.WaitOne();
+            result = zMessages.Dequeue();
+            zMsgMutex.ReleaseMutex();
             return result;
         }
 
@@ -354,7 +431,7 @@ namespace Mu
             List<byte> msgBuffer = new List<byte>();
             while (true)
             {
-                NetworkStream ns = mSocket.GetStream();
+                NetworkStream ns = zSocket.GetStream();
                 byte[] bytesReceived = new byte[10025];
                 int len = 0;
                 try
@@ -414,9 +491,9 @@ namespace Mu
             var newMsg = new Message();
             newMsg.Data = new byte[msgBuffer[0]];
             msgBuffer.CopyTo(1, newMsg.Data, 0, msgBuffer[0]);
-            mMsgMutex.WaitOne();
-            mMessages.Enqueue(newMsg);
-            mMsgMutex.ReleaseMutex();
-        }
+            zMsgMutex.WaitOne();
+            zMessages.Enqueue(newMsg);
+            zMsgMutex.ReleaseMutex();
+        }        
     }
 }

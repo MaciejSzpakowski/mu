@@ -122,20 +122,8 @@ namespace Mu
             {
                 if (tokens.Length <= 1 || Globals.Client == null)
                     return;
-                List<byte> msg = new List<byte>();
-                for (int i = 0; i < tokens.Length; i++)
-                {
-                    byte b = 0;
-                    if (byte.TryParse(tokens[i], out b))
-                        msg.Add(b);
-                }
-                if (msg.Count == 0)
-                    Write("Message to short");
-                else
-                {
-                    Globals.Client.SendMessage(msg.ToArray());
-                    Write("Message sent");
-                }
+                Globals.Client.SendMessage(tokens[1]);
+                Write("Message sent");
             });
             //disconnect
             AddCommand("disconnect", delegate (string[] tokens)
