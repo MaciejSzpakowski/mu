@@ -8,6 +8,7 @@ using FlatRedBall.Screens;
 using Microsoft.Xna.Framework;
 using System.Linq;
 using IOPath = System.IO.Path;
+using FlatRedBall.Input;
 
 namespace Mu
 {
@@ -78,8 +79,16 @@ namespace Mu
             Globals.EventManager.PreActivity();
             ScreenManager.Activity();
             Globals.EventManager.PostActivity();
-            if(Globals.DebugMode)
+            if (Globals.DebugMode)
+            {
+                if (InputManager.Keyboard.KeyDown(Microsoft.Xna.Framework.Input.Keys.LeftControl) &&
+                    InputManager.Keyboard.KeyPushed(Microsoft.Xna.Framework.Input.Keys.H))
+                {
+                    Globals.Console.Visible = !Globals.Console.Visible;
+                    Globals.PrintDebug.Visible = !Globals.PrintDebug.Visible;
+                }
                 Globals.PrintDebug.PrintDebugString();
+            }
 
             base.Update(gameTime);
         }

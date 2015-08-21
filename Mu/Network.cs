@@ -188,8 +188,6 @@ namespace Mu
         public Client() : base(null)
         {
             zWelcomeMessageTimeout = 2;
-            zReceivedWelcomeMessage = false;
-            mState = ClientState.Disconnected;
         }
 
         public ClientState State  { get {  return mState; } }
@@ -201,6 +199,9 @@ namespace Mu
         /// <param name="port"></param>
         public bool Connect(string host, int port)
         {
+            zMessages.Clear();
+            zReceivedWelcomeMessage = false;
+            mState = ClientState.Disconnected;
             zSocket = new TcpClient();
             try
             {
@@ -316,15 +317,16 @@ namespace Mu
             {
                 zIP = ((IPEndPoint)client.Client.RemoteEndPoint).Address.ToString();
                 Hero = new ClientHero();
+                zReceiveThread = new Thread(new ThreadStart(Receive));
+                zReceiveThread.IsBackground = true;
             }
             else
             {
                 zId = 0;
                 zIP = string.Empty;
                 Hero = null;
+                zReceiveThread = null;
             }
-            zReceiveThread = new Thread(new ThreadStart(Receive));
-            zReceiveThread.IsBackground = true;
         }
 
         /// <summary>

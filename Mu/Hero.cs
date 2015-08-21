@@ -191,9 +191,15 @@ namespace Mu
             return shero;
         }
 
-        public void Destroy()
+        public void DestroyThisPlayer()
         {
             Globals.EventManager.RemoveEvent("updatepos");
+        }
+
+        public void Destroy()
+        {
+            if (this == Globals.Players[0])
+                DestroyThisPlayer();            
             ShapeManager.Remove(zCollider);
             SpriteManager.RemoveSprite(zSprite);
             SpriteManager.RemoveSprite(zHealthBar);

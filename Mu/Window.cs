@@ -383,14 +383,16 @@ namespace Mu
                 return 0;
             CarretActivity();
             //dont type beyond limit
-            if (InputManager.Keyboard.AnyKeyPushed())
+            if (InputManager.Keyboard.AnyKeyPushed() || 
+                InputManager.Keyboard.KeyDown(Microsoft.Xna.Framework.Input.Keys.Back))
                 RemoveCarret();
             if (zText.DisplayText.Length < MaxLength)
             {                
                 zText.DisplayText += InputManager.Keyboard.GetStringTyped();
             }
             //backspace if length > 0
-            if (zText.DisplayText.Length > 0 && InputManager.Keyboard.KeyTyped(Microsoft.Xna.Framework.Input.Keys.Back))
+            if (zText.DisplayText.Length > 0 && 
+                InputManager.Keyboard.KeyTyped(Microsoft.Xna.Framework.Input.Keys.Back))
             {
                 zText.DisplayText = zText.DisplayText.Remove(zText.DisplayText.Length - 1);
             }
