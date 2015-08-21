@@ -10,19 +10,24 @@ namespace Mu
         [STAThread]
         static void Main(string[] args)
         {
-        //    try
-        //    {
-                Globals.CommandLineArgs = args;
-                using (Game1 game = new Game1())
+            Globals.CommandLineArgs = args;
+            if (System.Diagnostics.Debugger.IsAttached)
+            {
+                Game1 game = new Game1();
+                game.Run();
+            }
+            else
+            {
+                try
                 {
+                    Game1 game = new Game1();
                     game.Run();
                 }
-            //}
-            //catch (Exception e)
-            //{
-            //    HandleException(e);
-            //    //throw e;
-            //}
+                catch (Exception e)
+                {
+                    HandleException(e);
+                }
+            }
         }
 
         private static void HandleException(Exception e)

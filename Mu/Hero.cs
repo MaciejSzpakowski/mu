@@ -198,7 +198,7 @@ namespace Mu
 
         public void Destroy()
         {
-            if (this == Globals.Players[0])
+            if (Globals.Players.Count > 0 && this == Globals.Players[0])
                 DestroyThisPlayer();            
             ShapeManager.Remove(zCollider);
             SpriteManager.RemoveSprite(zSprite);

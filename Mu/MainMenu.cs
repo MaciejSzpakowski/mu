@@ -65,17 +65,13 @@ namespace Mu
                         return null;
                 }
             }
-
-            private void SelectCharacter()
-            {
-
-            }
         }
 
         public class NewCharacterWindow : Window
         {
             private HeroClass zHeroClass;
             private TextBox zNametextbox;
+            private Window zCharSprite;
 
             public NewCharacterWindow():base(null,true)
             {
@@ -91,21 +87,21 @@ namespace Mu
                 elfbutton.InitProps(Position + new Vector2(1, -1), new Vector2(4, 2), new Color(0.1f, 0.1f, 0.1f, 1), "Elf", Color.White);
                 elfbutton.OnClick = delegate ()
                 {
-                    zHeroClass = HeroClass.Elf;
+                    DisplayCharSprite(HeroClass.Elf);
                 };
 
                 Window knightbutton = new Button(this);
                 knightbutton.InitProps(elfbutton.Position + new Vector2(5, 0), new Vector2(4, 2), new Color(0.1f, 0.1f, 0.1f, 1), "Knight", Color.White);
                 knightbutton.OnClick = delegate ()
                 {
-                    zHeroClass = HeroClass.Knight;
+                    DisplayCharSprite(HeroClass.Knight);
                 };
 
                 Window wizardbutton = new Button(this);
                 wizardbutton.InitProps(knightbutton.Position + new Vector2(5, -0), new Vector2(4, 2), new Color(0.1f, 0.1f, 0.1f, 1), "Wizard", Color.White);
                 wizardbutton.OnClick = delegate ()
                 {
-                    zHeroClass = HeroClass.Wizard;
+                    DisplayCharSprite(HeroClass.Wizard);
                 };
 
                 Window createbutton = new Button(this);
@@ -116,9 +112,9 @@ namespace Mu
                 backbutton.InitProps(createbutton.Position + new Vector2(0, -3), new Vector2(4, 2), new Color(0.1f, 0.1f, 0.1f, 1), "Back", Color.White);
                 backbutton.OnClick = Destroy;
 
-                Window charSprite = new Window(this);
-                charSprite.InitProps(new Vector2(17, 4), new Vector2(4, 4), Color.White, "", Color.White);
-                charSprite.Visible = false;
+                zCharSprite = new Window(this);
+                zCharSprite.InitProps(Position + new Vector2(15, -1), new Vector2(4, 4), Color.White, "", Color.White);
+                zCharSprite.Visible = false;
             }
 
             private void CreateNewCharacter()
@@ -152,6 +148,36 @@ namespace Mu
                 MainMenu m = (MainMenu)ScreenManager.CurrentScreen;
                 m.ReloadCharacterList();
                 Destroy();
+            }
+
+            private void DisplayCharSprite(HeroClass c)
+            {
+                zHeroClass = c;
+                Sprite s1 = null;
+                if (c == HeroClass.Elf)
+                {
+                    s1 = Functions.AddSpriteFromAchx(Path.Make(Path.Texture, "elf.achx"));
+                    zCharSprite.Text = "Elf";
+                }
+                else if (c == HeroClass.Knight)
+                {
+                    s1 = Functions.AddSpriteFromAchx(Path.Make(Path.Texture, "knight.achx"));
+                    zCharSprite.Text = "Knight";
+                }
+                else if (c == HeroClass.Wizard)
+                {
+                    s1 = Functions.AddSpriteFromAchx(Path.Make(Path.Texture, "wizard.achx"));
+                    zCharSprite.Text = "Wizard";
+                }
+                SpriteManager.RemoveSprite(s1);
+                zCharSprite.zSprite.Texture = s1.Texture;
+                zCharSprite.zSprite.LeftTextureCoordinate = 0.333f;
+                zCharSprite.zSprite.RightTextureCoordinate = 0.667f;
+                zCharSprite.zSprite.ColorOperation = ColorOperation.Texture;
+                zCharSprite.Visible = true;
+                zCharSprite.Size = new Vector2(8, 8);                
+                zCharSprite.zText.RelativePosition.X = 0;
+                zCharSprite.zText.HorizontalAlignment = HorizontalAlignment.Center;
             }
 
             private bool IsNameValid()
