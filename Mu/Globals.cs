@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using IOPath = System.IO.Path;
 
@@ -16,9 +17,7 @@ namespace Mu
     public static class Globals
     {
         //variables
-        public static string[] CommandLineArgs = null;
-        public static bool DebugMode = false;
-        public static string DebugString = string.Empty;
+        public static string[] CommandLineArgs = null;        
         public static Type FirstScreen = typeof(MainMenu);
         public static BitmapFont Font = null;
         public static GameTime GameTime = new GameTime();
@@ -28,25 +27,45 @@ namespace Mu
         public static ushort Port = 0;
 
         //singletons
-        public static Client Client = new Client();
-        public static Console Console = null;
+        public static Client Client = null;        
         public static EventManager EventManager = new EventManager();
-        public static Game1 Game = null;
-        public static MuGuiManager GuiManager = new MuGuiManager();
-        public static PrintDebug PrintDebug = null;
-        public static Server Server = new Server();
+        public static MuGuiManager GuiManager = new MuGuiManager();        
+        public static Server Server = null;        
+    }
 
-        //aliases
+    public static class Debug
+    {
+        public static bool DebugMode = false;
+        public static PrintDebug PrintDebug = null;
+        public static Console Console = null;
+        //Debug
+        private static Queue<string> newMessages = new Queue<string>();
+        private static Mutex msgQueueMutex = new Mutex();
         public static void Write(string text)
         {
             if (DebugMode)
-                Console.Write(text);
+            {
+                msgQueueMutex.WaitOne();
+                newMessages.Enqueue(text);
+                msgQueueMutex.ReleaseMutex();
+            }
         }
 
-        public static void Debug(object objToPrint, string desc = "")
+        public static void Print(object objToPrint, string desc = "")
         {
             if (DebugMode)
-                PrintDebug.Debug(objToPrint, desc);
+                PrintDebug.Print(objToPrint, desc);
+        }
+
+        internal static void DequeueNewMessages()
+        {
+            msgQueueMutex.WaitOne();
+            while (newMessages.Count > 0)
+            {
+                string str = newMessages.Dequeue();
+                Console.Write(str);
+            }
+            msgQueueMutex.ReleaseMutex();            
         }
     }
 
@@ -75,7 +94,7 @@ namespace Mu
         {
             return IOPath.Combine(paths);
         }
-        public static void Init(string root)
+        public static void SetRoot(string root)
         {
             Root = root;
             Data = IOPath.Combine(Root, "data");
@@ -95,7 +114,7 @@ namespace Mu
 
         public static void ClipCursorInGameWindow()
         {
-            var rect = Globals.Game.Window.ClientBounds;
+            var rect = FlatRedBallServices.Game.Window.ClientBounds;
             System.Drawing.Rectangle client = new System.Drawing.Rectangle(rect.X, rect.Y, rect.Width, rect.Height);
             System.Windows.Forms.Cursor.Clip = client;
         }
@@ -274,6 +293,46 @@ namespace Mu
                 if (f < -11 || f > 15 || i < -11 || i > 15)
                     throw new ArgumentOutOfRangeException("Rng doesn't work");
             }
+        }
+    }
+
+    public static class Ini
+    {
+        public static string Server = "";
+        public static string Port = "";
+
+        public static void LoadIni(string file)
+        {
+            try
+            {
+                string[] ini = File.ReadAllLines(file);
+                foreach (string s in ini.Where(str => str.Contains('=') && str[0] != ';'))
+                    ProcessLine(s);
+            }
+            catch (Exception e)
+            {
+                Debug.Write("Ini has errors");
+            }
+        }
+
+        private static void ProcessLine(string s)
+        {
+            string[] keyValue = s.Split('=');
+            string key = keyValue[0].Replace(" ", "").ToUpper();
+            string value = keyValue[1].Replace(" ", "");
+
+            switch (key)
+            {
+                case ("SERVER"):
+                    Server = value;
+                    break;
+                case ("PORT"):
+                    Port = value;
+                    break;
+                default:
+                    break;
+            }
+
         }
     }
 }

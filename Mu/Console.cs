@@ -109,13 +109,13 @@ namespace Mu
             AddCommand("hide", delegate (string[] tokens)
             {
                 if (tokens.Length > 1 && tokens[1] == "printdebug")
-                    Globals.PrintDebug.Hide();
+                    Debug.PrintDebug.Hide();
             });
             //show
             AddCommand("show", delegate (string[] tokens)
             {
                 if (tokens.Length > 1 && tokens[1] == "printdebug")
-                    Globals.PrintDebug.Show();
+                    Debug.PrintDebug.Show();
             });
             //send msg from client to server
             AddCommand("send", delegate (string[] tokens)
@@ -129,15 +129,15 @@ namespace Mu
             AddCommand("disconnect", delegate (string[] tokens)
             {
                 if (Globals.Client == null)
-                    Globals.Write("Client doesnt exist");
+                    Debug.Write("Client doesnt exist");
                 else
-                    Globals.Client.Disconnect();
+                    Globals.Client.Disconnect(false);
             });
             //stop
             AddCommand("stop", delegate (string[] tokens)
             {
                 if (Globals.Server == null)
-                    Globals.Write("Sever doesnt exist");
+                    Debug.Write("Sever doesnt exist");
                 else
                     Globals.Server.Stop();
             });
@@ -145,15 +145,15 @@ namespace Mu
             AddCommand("start", delegate (string[] tokens)
             {
                 if (Globals.Server == null)
-                    Globals.Write("Sever doesnt exist");
+                    Debug.Write("Sever doesnt exist");
                 if (tokens.Length < 2)
-                    Globals.Write("Not enough parametes");
+                    Debug.Write("Not enough parametes");
                 else
                 {
                     int port = 0;
                     int.TryParse(tokens[1], out port);
                     if (port == 0)
-                        Globals.Write("Wrong port");
+                        Debug.Write("Wrong port");
                     else
                     {
                         Globals.Server.Start(port);
@@ -165,15 +165,15 @@ namespace Mu
             AddCommand("connect", delegate (string[] tokens)
             {
                 if (Globals.Client == null)
-                    Globals.Write("Client doesnt exist");
+                    Debug.Write("Client doesnt exist");
                 if (tokens.Length < 3)
-                    Globals.Write("Not enough parametes");
+                    Debug.Write("Not enough parametes");
                 else
                 {
                     int port = 0;
                     int.TryParse(tokens[2], out port);
                     if (port == 0)
-                        Globals.Write("Wrong port");
+                        Debug.Write("Wrong port");
                     else
                         Globals.Client.Connect(tokens[1], port);
                 }

@@ -60,7 +60,7 @@ namespace Mu
                 throw se;
             }
             zState = ServerState.Running;
-            Globals.Write("Server started");
+            Debug.Write("Server started");
             return true;
         }
 
@@ -69,7 +69,7 @@ namespace Mu
         /// </summary>
         public void StartAccepting()
         {
-            Globals.Write("Server now accepting");
+            Debug.Write("Server now accepting");
             zAcceptClientsThread.Start();
         }
 
@@ -85,7 +85,7 @@ namespace Mu
         /// </summary>
         public void StopAccepting()
         {
-            Globals.Write("Server stopped accepting");
+            Debug.Write("Server stopped accepting");
             throw new NotImplementedException();
         }
 
@@ -94,11 +94,11 @@ namespace Mu
         /// </summary>
         public void Activity()
         {
-            Globals.Debug(zClients.Count,"Server client count");
-            Globals.Debug(zAcceptClientsThread.ThreadState, "Accepting thread");
+            Debug.Print(zClients.Count,"Server client count");
+            Debug.Print(zAcceptClientsThread.ThreadState, "Accepting thread");
             for (int i = zClients.Count - 1; i >= 0; i--)
             {
-                Globals.Debug(zClients[i].ReceiveThread.ThreadState, "Client " + i.ToString() + " receiving thread");
+                Debug.Print(zClients[i].ReceiveThread.ThreadState, "Client " + i.ToString() + " receiving thread");
                 var msg = DequeueMessage(zClients[i]);
                 if(msg != null)
                     ProcessMessage(msg, zClients[i]);
@@ -109,7 +109,7 @@ namespace Mu
 
         public void RemoveClient(ServerClient c)
         {
-            Globals.Write(c.IP + " disconnected");
+            Debug.Write(c.IP + " disconnected");
             foreach (var c1 in zClients.Where(c2 => c2 != c))
                 c1.SendRemovePlayer(c);
             c.Socket.Close();
@@ -140,7 +140,7 @@ namespace Mu
 
         public void Stop()
         {
-            Globals.Write("Server stopped");
+            Debug.Write("Server stopped");
             zState = ServerState.Stopped;
             zSocket.Stop();
             foreach (ServerClient c in zClients)
@@ -224,14 +224,14 @@ namespace Mu
                 else
                     throw e;
             }
-            Globals.Write("Client connected");
+            Debug.Write("Client connected");
             mState = ClientState.Connected;
             //wait for welcome message
             //its needed because in some cases client will report connected even
             //if it's not
             if (!GetWelcomeMsg())
             {
-                Disconnect();
+                Disconnect(false);
                 return false;
             }
             return true;
@@ -252,19 +252,21 @@ namespace Mu
         /// <summary>
         /// Disconnect from the server
         /// </summary>
-        public void Disconnect()
+        public void Disconnect(bool showdc)
         {
+            if(showdc)
+                new MessageBox("Disconnected from the server", MessageBoxType.OK, "disconnected");
             zReceivedWelcomeMessage = false;
             mState = ClientState.Disconnected;
             if (zSocket.Connected)
                 zSocket.GetStream().Close();
             zSocket.Close();
-            Globals.Write("Client disconnected");
+            Debug.Write("Client disconnected");
         }
 
         public void Activity()
         {
-            Globals.Debug(Globals.Client.zReceiveThread.ThreadState,"Client receiver");
+            Debug.Print(Globals.Client.zReceiveThread.ThreadState,"Client receiver");
             //early break
             if (mState == ClientState.Disconnected)
                 return;
@@ -272,7 +274,7 @@ namespace Mu
             if (msg != null)
                 ProcessMessage(msg);
             if (mState == ClientState.Connected && zReceiveThread.ThreadState == ThreadState.Stopped)
-                Disconnect();
+                Disconnect(true);
         }        
     }
 
@@ -405,14 +407,31 @@ namespace Mu
         /// <param name="message"></param>
         public void zSendMessage(byte[] message)
         {
+            if (!zSocket.Connected)
+                return;
             //write to network stream
             NetworkStream ns = zSocket.GetStream();
             ns.Write(message, 0, message.Length);
             ns.Flush();
+            //debug
+            if (Debug.DebugMode && message[1] != MsgHeader.PlayerPos)
+                PrintMsg(message);
+        }
+
+        private void PrintMsg(byte[] message)
+        {
+            string str;
+            if (GetType() == typeof(Client))
+                str = "to server:";
+            else
+                str = "to client:";
+            for(int i=1;i<message.Length;i++)
+                str += "[" + message[i].ToString() + "]";
+            Debug.Write(str);
         }
 
         /// <summary>
-        /// DONT USE THIS YOU F***R, it's for client and server only
+        /// its a small part of the whole msg processing mechanism
         /// </summary>
         /// <param name="c"></param>
         /// <returns></returns>

@@ -13,6 +13,8 @@ namespace Mu
         {
             byte[] data = msg.Data;
             byte header = data[0];
+            if (Debug.DebugMode && data[0] != MsgHeader.PlayerPos)
+                PrintMsg(data);
 
             switch (header)
             {
@@ -27,11 +29,19 @@ namespace Mu
             }
         }
 
+        private void PrintMsg(byte[] message)
+        {
+            string str = "from client";
+            foreach (byte b in message)
+                str += "[" + b.ToString() + "]";
+            Debug.Write(str);
+        }
+
         private void UpdatePlayerPos(ServerClient c, byte[] rawdata)
         {
             object[] data = Functions.GetData(rawdata, "ff");
             c.Hero.Position.X = (float)data[0];
-            c.Hero.Position.Y = (float)data[0];
+            c.Hero.Position.Y = (float)data[1];
             RelayMessage(c, rawdata);
         }
 
@@ -76,6 +86,8 @@ namespace Mu
         {
             byte[] data = msg.Data;
             byte header = data[0];
+            if (Debug.DebugMode && data[0] != MsgHeader.PlayerPos)
+                PrintMsg(data);
 
             switch (header)
             {
@@ -96,12 +108,20 @@ namespace Mu
             }
         }
 
+        private void PrintMsg(byte[] message)
+        {
+            string str = "from server";
+            foreach (byte b in message)
+                str += "[" + b.ToString() + "]";
+            Debug.Write(str);
+        }
+
         private void UpdatePlayerPos(byte[] rawdata)
         {
             object[] data = Functions.GetData(rawdata, "ffi");
             var h = Globals.Players.First(h1 => h1.Netid == (int)data[2]);
-            h.X = (float)data[0];
-            h.Y = (float)data[1];
+            h.Target.X = (float)data[0];
+            h.Target.Y = (float)data[1];
         }
 
         private void RemovePlayer(byte[] rawdata)
@@ -115,9 +135,11 @@ namespace Mu
         private void AddPlayer(byte[] rawdata)
         {
             object[] data = Functions.GetData(rawdata, "sicff");
+            Debug.Write("received"+((float)data[3]).ToString() + " " + ((float)data[4]).ToString());
             Hero h = new Hero((string)data[0], (HeroClass)Convert.ToChar(data[2]));
             h.Netid = (int)data[1];
             h.Position = new Vector3((float)data[3], (float)data[4], ZLayer.Npc);
+            h.Target = h.Position;
             Globals.Players.Add(h);
         }
 
@@ -140,6 +162,7 @@ namespace Mu
         //messages send by server
         public void SendAddPlayer(ClientHero h)
         {
+            Debug.Write("sending:" + h.Position.X.ToString()+" " + h.Position.Y.ToString());
             SendMessage(MsgHeader.AddPlayer, h.Name, h.Netid, (char)h.Class, h.Position.X, h.Position.Y);
         }
 

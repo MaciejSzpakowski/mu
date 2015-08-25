@@ -213,7 +213,7 @@ namespace Mu
         {
             zText.HorizontalAlignment = HorizontalAlignment.Center;
             zText.VerticalAlignment = VerticalAlignment.Center;
-            zText.RelativePosition = new Vector3(0, 0, 0.001f);
+            zText.RelativePosition = new Vector3(0, -zText.Height/3f, 0.001f);
         }
 
         /// <summary>
@@ -292,7 +292,7 @@ namespace Mu
                 Position = Position;
                 //realign text since now windows looks different
                 if(zText.HorizontalAlignment == HorizontalAlignment.Left)
-                    zText.RelativePosition = new Vector3(-zSprite.ScaleX, zSprite.ScaleY - zText.Height / 2, 0.001f);
+                    zText.RelativePosition = new Vector3(-zSprite.ScaleX + 0.5f, zSprite.ScaleY - zText.Height / 2, 0.001f) + zText.RelativePosition;
             }
         }
 
@@ -363,13 +363,17 @@ namespace Mu
         public VoidFunction OnEnter;
         public uint MaxLength;
         private char carret;
+        private string input;
 
         public TextBox(Window owner) : base(owner)
         {
+            input = string.Empty;
             carret = (char)300;
             MaxLength = uint.MaxValue;
             OnEnter = delegate () { };
             OnClick = StartTyping;
+            zText.RelativePosition.X = 0.5f;
+            zText.RelativePosition.Y = -zSprite.ScaleY;
         }
 
         public void StartTyping()
@@ -380,22 +384,17 @@ namespace Mu
         private int TypingRoutine()
         {
             if (zCollect)
-                return 0;
-            CarretActivity();
-            //dont type beyond limit
-            if (InputManager.Keyboard.AnyKeyPushed() || 
-                InputManager.Keyboard.KeyDown(Microsoft.Xna.Framework.Input.Keys.Back))
-                RemoveCarret();
-            if (zText.DisplayText.Length < MaxLength)
-            {                
-                zText.DisplayText += InputManager.Keyboard.GetStringTyped();
-            }
+                return 0;            
+            input += InputManager.Keyboard.GetStringTyped();
+            //limit
+            if (input.Length > MaxLength)
+                input = input.Remove((int)MaxLength);
             //backspace if length > 0
-            if (zText.DisplayText.Length > 0 && 
+            if (input.Length > 0 && 
                 InputManager.Keyboard.KeyTyped(Microsoft.Xna.Framework.Input.Keys.Back))
-            {
-                zText.DisplayText = zText.DisplayText.Remove(zText.DisplayText.Length - 1);
-            }
+                input = input.Remove(input.Length - 1);
+            zText.DisplayText = input;
+            CarretActivity();
             //end routine if clicked
             if (InputManager.Mouse.ButtonPushed(Mouse.MouseButtons.LeftButton))
             {
@@ -436,13 +435,13 @@ namespace Mu
         {
             get
             {
-                RemoveCarret();
-                return base.Text;
+                return input;
             }
 
             set
             {
-                base.Text = value;
+                input = value;
+                zText.DisplayText = input;
             }
         }
     }
@@ -492,7 +491,6 @@ namespace Mu
             ok.Position = Position + new Vector2(5, -7);
             ok.Text = "OK";
             ok.Color = new Color(0.1f, 0.1f, 0.1f, 1);
-            ok.CenterText();
             ok.OnClick = OkClick;
             ok.TextColor = Color.White;
             Globals.EventManager.AddEvent(MbEscape, "mbescape", true);
@@ -505,7 +503,6 @@ namespace Mu
             yes.Position = Position + new Vector2(2, -7);
             yes.Text = "YES";
             yes.Color = new Color(0.1f, 0.1f, 0.1f, 1);
-            yes.CenterText();
             yes.OnClick = YesClick;
             yes.TextColor = Color.White;
 
@@ -514,7 +511,6 @@ namespace Mu
             no.Position = Position + new Vector2(8, -7);
             no.Text = "NO";
             no.Color = new Color(0.1f, 0.1f, 0.1f, 1);
-            no.CenterText();
             no.OnClick = NoClick;
             no.TextColor = Color.White;
             Globals.EventManager.AddEvent(MbEscape, "mbescape", true);

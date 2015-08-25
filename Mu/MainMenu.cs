@@ -34,8 +34,9 @@ namespace Mu
                 zFileName = fileName;
                 SaveHero shero = (SaveHero)Functions.Deserialize(fileName);
                 zHeroName = shero.Name;
-                Text = shero.Name + " "+ shero.Level.ToString();
+                Text = shero.Name + "\nLvl"+ shero.Level.ToString();
                 zText.RelativePosition.Y += 3;
+                zText.RelativePosition.X += 0.5f;
                 zText.HorizontalAlignment = HorizontalAlignment.Center;
                 var s1 = SetSprite(shero);
                 SpriteManager.RemoveSprite(s1);
@@ -205,7 +206,7 @@ namespace Mu
                 zServerLabel.InitProps(Position + new Vector2(1, -1), new Vector2(4, 2), new Color(0.1f, 0.1f, 0.1f, 0), "Server", Color.White);
 
                 zServer = new TextBox(this);
-                zServer.InitProps(zServerLabel.Position + new Vector2(5, 0), new Vector2(15, 1.5f), new Color(0.1f, 0.1f, 0.1f, 1), "", Color.White);
+                zServer.InitProps(zServerLabel.Position + new Vector2(5, 0), new Vector2(15, 1.5f), new Color(0.1f, 0.1f, 0.1f, 1), Ini.Server, Color.White);
                 zServer.MaxLength = 30;
 
                 var portlabel = new Window(this);
@@ -213,7 +214,7 @@ namespace Mu
 
 
                 zPort = new TextBox(this);
-                zPort.InitProps(portlabel.Position + new Vector2(5, 0), new Vector2(15, 1.5f), new Color(0.1f, 0.1f, 0.1f, 1), "", Color.White);
+                zPort.InitProps(portlabel.Position + new Vector2(5, 0), new Vector2(15, 1.5f), new Color(0.1f, 0.1f, 0.1f, 1), Ini.Port, Color.White);
                 zPort.MaxLength = 5;
 
                 Window startbutton = new Button(this);
@@ -232,7 +233,7 @@ namespace Mu
                 joinbutton.InitProps(Position + new Vector2(6, -7), new Vector2(4, 2), new Color(0.1f, 0.1f, 0.1f, 1), "Join", Color.White);
                 joinbutton.OnClick = delegate()
                 {
-                    Globals.Ip = zServer.Text;
+                    Globals.Ip = zServer.Text == string.Empty ? "localhost" : zServer.Text;
                     MainMenu m = (MainMenu)ScreenManager.CurrentScreen;
                     if (TryPort())
                         m.Join();
@@ -303,7 +304,7 @@ namespace Mu
                 exitbutton.InitProps(Position + new Vector2(1, -13), new Vector2(8, 2), new Color(0.1f, 0.1f, 0.1f, 1), "Exit", Color.White);
                 exitbutton.OnClick = delegate ()
                 {
-                    Globals.Game.Exit();
+                    FlatRedBallServices.Game.Exit();
                 };
             }
 
@@ -330,6 +331,9 @@ namespace Mu
 
         public void Start()
         {
+            if (Globals.Server != null)
+                Globals.Server.Stop();
+            Globals.Server = new Server();
             if (!Globals.Server.Start(Globals.Port))
                 new MessageBox("Could start the server");
             else
@@ -341,6 +345,9 @@ namespace Mu
 
         public void Join()
         {
+            if (Globals.Client != null)
+                Globals.Client.Disconnect(false);
+            Globals.Client = new Client();
             if(Globals.Client.Connect(Globals.Ip, Globals.Port))
                 ScreenManager.CurrentScreen.MoveToScreen(typeof(LevelMap));
             else
@@ -415,7 +422,8 @@ namespace Mu
         public override void Activity(bool firstTimeCalled)
         {
             Globals.GuiManager.Activity();
-
+            if(Globals.Server != null)
+                Globals.Server.Activity();
             //test
             TestActivity();
 
@@ -430,13 +438,14 @@ namespace Mu
                 m.Destroy();
             base.Destroy();
         }
-
         public void TestInit()
         {
         }
 
         public void TestActivity()
         {
+            Debug.Print(InputManager.Mouse.WorldXAt(0).ToString() + " "
+                + InputManager.Mouse.WorldXAt(0).ToString());
         }
     }
 }

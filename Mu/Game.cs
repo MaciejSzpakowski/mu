@@ -35,30 +35,29 @@ namespace Mu
         private void InitDebug()
         {
             System.Windows.Forms.Form gameWindow = (System.Windows.Forms.Form)System.Windows.Forms.Control.FromHandle(Window.Handle);
-            Globals.Console = new Console();
-            Globals.Console.Show(gameWindow);
-            Globals.PrintDebug = new PrintDebug();
-            Globals.PrintDebug.Show(gameWindow);
-            Globals.DebugString = GetHashCode().ToString();
-            Window.Title = "Mu " + Globals.DebugString;
-            Globals.PrintDebug.Text = "PrintDebug " + Globals.DebugString;
-            Globals.Console.Text = "Console " + Globals.DebugString;
+            Debug.Console = new Console();
+            Debug.Console.Show(gameWindow);
+            Debug.PrintDebug = new PrintDebug();
+            Debug.PrintDebug.Show(gameWindow);
+            string unique = Window.Handle.ToString();
+            Window.Title = "Mu " + unique;
+            Debug.PrintDebug.Text = "PrintDebug " + unique;
+            Debug.Console.Text = "Console " + unique;
         }
 
         private void LoadGlobalAssets()
         {
-            Globals.Font = new BitmapFont(IOPath.Combine(Path.Font,"gamefont_small1024_2.png"), 
-                IOPath.Combine(Path.Font, "gamefont_small1024.fnt"), FlatRedBallServices.GlobalContentManager);
+            Globals.Font = new BitmapFont(IOPath.Combine(Path.Font,"font.png"), 
+                IOPath.Combine(Path.Font, "font.fnt"), FlatRedBallServices.GlobalContentManager);
         }
 
         protected override void Initialize()
         {
-            Path.Init("c:\\bajery\\mu");
-            Path.Init("C:\\Users\\Maciej\\OneDrive\\mu");
-            Globals.Game = this;
+            Path.SetRoot("c:\\bajery\\mu");
+            //Path.SetRoot("C:\\Users\\Maciej\\OneDrive\\mu");
             if (Globals.CommandLineArgs.Contains("debug"))
-                Globals.DebugMode = true;
-            if (Globals.DebugMode)
+                Debug.DebugMode = true;
+            if (Debug.DebugMode)
                 InitDebug();
 
             FlatRedBallServices.InitializeFlatRedBall(this, graphics);
@@ -66,12 +65,12 @@ namespace Mu
             FlatRedBallServices.GraphicsOptions.TextureFilter = Microsoft.Xna.Framework.Graphics.TextureFilter.Point;
             //FlatRedBallServices.GraphicsOptions.SetFullScreen(800, 600);
             LoadGlobalAssets();
+            Ini.LoadIni(Path.Make(Path.Root,"game.ini"));
             ScreenManager.Start(Globals.FirstScreen);
 
             base.Initialize();
         }
-
-
+        
         protected override void Update(GameTime gameTime)
         {
             FlatRedBallServices.Update(gameTime);
@@ -79,15 +78,16 @@ namespace Mu
             Globals.EventManager.PreActivity();
             ScreenManager.Activity();
             Globals.EventManager.PostActivity();
-            if (Globals.DebugMode)
+            if (Debug.DebugMode)
             {
                 if (InputManager.Keyboard.KeyDown(Microsoft.Xna.Framework.Input.Keys.LeftControl) &&
                     InputManager.Keyboard.KeyPushed(Microsoft.Xna.Framework.Input.Keys.H))
                 {
-                    Globals.Console.Visible = !Globals.Console.Visible;
-                    Globals.PrintDebug.Visible = !Globals.PrintDebug.Visible;
+                    Debug.Console.Visible = !Debug.Console.Visible;
+                    Debug.PrintDebug.Visible = !Debug.PrintDebug.Visible;
                 }
-                Globals.PrintDebug.PrintDebugString();
+                Debug.PrintDebug.PrintDebugString();
+                Debug.DequeueNewMessages();
             }
 
             base.Update(gameTime);

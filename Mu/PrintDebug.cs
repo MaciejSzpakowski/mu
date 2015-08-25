@@ -23,7 +23,7 @@ namespace Mu
         {
             label1.Text = string.Empty;
             mDebugString = string.Empty;
-            Location = new Point(Location.X, Globals.Console.Location.Y + Globals.Console.Size.Height);
+            Location = new Point(Location.X, Debug.Console.Location.Y + Debug.Console.Size.Height);
         }
 
         /// <summary>
@@ -31,7 +31,7 @@ namespace Mu
         /// </summary>
         /// <param name="item">What to print, this item will be convertex to string by ToString() method</param>
         /// <param name="desc">Optional description</param>
-        public void Debug(object item, string desc = "")
+        public void Print(object item, string desc = "")
         {
             if (desc != string.Empty)
                 mDebugString += desc + ": ";

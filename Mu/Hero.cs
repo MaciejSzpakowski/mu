@@ -31,6 +31,8 @@ namespace Mu
         private float zWalkingSpeed;
         public int Netid;
         private Vector3 zLastPosition;
+        public bool AcceptArrows;
+        public Vector3 Target; //used by other players
 
         //serializable
         public HeroClass Class;
@@ -51,6 +53,8 @@ namespace Mu
 
         public Hero(string name, HeroClass heroClass)
         {
+            Target = Position;
+            AcceptArrows = true;
             zLastPosition = Position;
             Netid = 0;
             Name = name;
@@ -122,6 +126,12 @@ namespace Mu
 
         public void Input()
         {
+            if(AcceptArrows)
+                InputMovement();
+        }
+
+        private void InputMovement()
+        {
             //8 directions
             bool left = InputManager.Keyboard.KeyDown(Microsoft.Xna.Framework.Input.Keys.Left);
             bool right = InputManager.Keyboard.KeyDown(Microsoft.Xna.Framework.Input.Keys.Right);
@@ -152,11 +162,48 @@ namespace Mu
             {
                 Input();
             }
+            else
+            {
+                GotoTarget();
+            }
+            AnimationControl();
+        }
+
+        private void GotoTarget()
+        {
+            float delta = 0;
+            Vector3.Distance(ref Target, ref Position, out delta);
+            if (delta > 0.1f)
+            {
+                Velocity = Target - Position;
+                Velocity.Normalize();
+                Velocity *= zWalkingSpeed;
+            }
+        }
+
+        private bool FlipHorizontal = false;
+        public void AnimationControl()
+        {
+            if ((Velocity != Vector3.Zero) && zSprite.CurrentChainName != "Walk")
+            {
+                float walkingAnimationSpeed = 0.33f;
+                zSprite.AnimationSpeed = walkingAnimationSpeed;
+                zSprite.CurrentChainName = "Walk";
+            }
+            else if (Velocity == Vector3.Zero && zSprite.CurrentChainName != "Idle")
+            {
+                zSprite.CurrentChainName = "Idle";
+            }
+            if (Velocity.X < 0 && zSprite.FlipHorizontal)
+                FlipHorizontal = false;
+            else if (Velocity.X > 0 && !zSprite.FlipHorizontal)
+                FlipHorizontal = true;
+            zSprite.FlipHorizontal = FlipHorizontal;
         }
 
         public void StartUpdatingPos()
         {
-            Globals.EventManager.AddEvent(UpdatePos, "updatepos", false, 0, 0, 0.3f);
+            Globals.EventManager.AddEvent(UpdatePos, "updatepos", false, 0, 0, 0.1f);
         }
 
         private int UpdatePos()

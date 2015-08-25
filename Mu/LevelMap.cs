@@ -85,11 +85,12 @@ namespace Mu
             InitEvents();
             Globals.Client.SendReady();
             Globals.Players[0].StartUpdatingPos();
+            new Chat();
         }
 
         public void Exit()
         {
-            Globals.Client.Disconnect();
+            Globals.Client.Disconnect(false);
             Destroy();
             ScreenManager.CurrentScreen.MoveToScreen(typeof(MainMenu));
         }
@@ -106,6 +107,14 @@ namespace Mu
                     Exit();
                 return 1;
             }, "escapemap");
+            zEvents.Add(e1);
+            // disconnected
+            e1 = Globals.EventManager.AddEvent(delegate ()
+            {
+                if (Globals.GuiManager.GetMbResult(MessageBoxReturn.OK, "disconnected"))
+                    Exit();
+                return 1;
+            }, "disconnected");
             zEvents.Add(e1);
         }
 
@@ -126,22 +135,27 @@ namespace Mu
             //test
             TestActivity();
             //gui
-            Globals.GuiManager.Activity();
+            Globals.GuiManager.Activity();            
             //server and client
-            Globals.Server.Activity();
+            if(Globals.Server != null)
+                Globals.Server.Activity();
             Globals.Client.Activity();
             //players
             for (int i = 0; i < Globals.Players.Count; i++)
                 Globals.Players[i].Activity(i == 0);
-            //camera
+            CameraLookAtPlayer();
+
+            //i think this should be at the end
+            base.Activity(firstTimeCalled);
+        }
+
+        private void CameraLookAtPlayer()
+        {
             if (Globals.Players.Count > 0)
             {
                 SpriteManager.Camera.Position.X = Globals.Players[0].X;
                 SpriteManager.Camera.Position.Y = Globals.Players[0].Y;
             }
-
-            //i think this should be at the end
-            base.Activity(firstTimeCalled);
         }
 
         public override void Destroy()
@@ -161,6 +175,8 @@ namespace Mu
 
         public void TestActivity()
         {
+            Debug.Print(InputManager.Mouse.WorldXAt(0).ToString() + " " 
+                + InputManager.Mouse.WorldXAt(0).ToString());            
         }
     }
 
