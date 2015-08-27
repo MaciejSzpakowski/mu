@@ -291,8 +291,8 @@ namespace Mu
                 //realign, position changes which is important to display window correctly
                 Position = Position;
                 //realign text since now windows looks different
-                if(zText.HorizontalAlignment == HorizontalAlignment.Left)
-                    zText.RelativePosition = new Vector3(-zSprite.ScaleX + 0.5f, zSprite.ScaleY - zText.Height / 2, 0.001f) + zText.RelativePosition;
+                if (zText.HorizontalAlignment == HorizontalAlignment.Left)
+                    zText.RelativePosition = new Vector3(-zSprite.ScaleX + 0.2f, zSprite.ScaleY - 0.2f - zText.Height / 2, 0.001f);
             }
         }
 

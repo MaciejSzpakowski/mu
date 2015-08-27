@@ -27,6 +27,7 @@ namespace Mu
         public static ushort Port = 0;
 
         //singletons
+        public static Chat Chat = null;
         public static Client Client = null;        
         public static EventManager EventManager = new EventManager();
         public static MuGuiManager GuiManager = new MuGuiManager();        
@@ -139,7 +140,7 @@ namespace Mu
         public static int Clamp(this int i, int min, int max)
         {
             if (max < min)
-                throw new ArgumentOutOfRangeException("max must be greater than min");
+                throw new ArgumentOutOfRangeException("max must be greater or equal min");
             if (i > max)
                 return max;
             else if (i < min)

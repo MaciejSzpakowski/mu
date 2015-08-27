@@ -85,7 +85,7 @@ namespace Mu
             InitEvents();
             Globals.Client.SendReady();
             Globals.Players[0].StartUpdatingPos();
-            new Chat();
+            Globals.Chat = new Chat();
         }
 
         public void Exit()
@@ -165,6 +165,8 @@ namespace Mu
             foreach (Hero h in Globals.Players)
                 h.Destroy();
             Globals.Players.Clear();
+            Globals.GuiManager.Clear();
+            Globals.Chat = null;
             zMap.Destroy();
             base.Destroy();
         }
@@ -176,7 +178,7 @@ namespace Mu
         public void TestActivity()
         {
             Debug.Print(InputManager.Mouse.WorldXAt(0).ToString() + " " 
-                + InputManager.Mouse.WorldXAt(0).ToString());            
+                + InputManager.Mouse.WorldXAt(0).ToString());
         }
     }
 

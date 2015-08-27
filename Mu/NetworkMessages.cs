@@ -24,6 +24,9 @@ namespace Mu
                 case MsgHeader.PlayerPos:
                     UpdatePlayerPos(c, data);
                     break;
+                case MsgHeader.Chat:
+                    RelayMessage(c, data);
+                    break;
                 default:
                     throw new ArgumentException("Unhandled message received by server");
             }
@@ -48,8 +51,8 @@ namespace Mu
         /// <summary>
         /// Appends netid and resend to everyone else than c
         /// </summary>
-        /// <param name="c"></param>
-        /// <param name="rawdata"></param>
+        /// <param name="c">who was sender originally</param>
+        /// <param name="rawdata">this is 'data' array from 'Server.ProcessMessage()'</param>
         private void RelayMessage(ServerClient c, byte[] rawdata)
         {
             byte[] relaymsg = new byte[rawdata.Length + 5];
@@ -103,9 +106,19 @@ namespace Mu
                 case MsgHeader.PlayerPos:
                     UpdatePlayerPos(data);
                     break;
+                case MsgHeader.Chat:
+                    PostChat(data);
+                    break;
                 default:
                     throw new ArgumentException("Unhandled message received by client");
             }
+        }
+
+        private void PostChat(byte[] rawdata)
+        {
+            object[] data = Functions.GetData(rawdata, "sci");
+            var h = Globals.Players.First(h1 => h1.Netid == (int)data[2]);
+            Globals.Chat.Post(h.Name + ": "+(string)data[0], Color.White, Color.Black);
         }
 
         private void PrintMsg(byte[] message)
@@ -144,6 +157,9 @@ namespace Mu
         }
 
         //messages send by client
+        /// <summary>
+        /// Informs server that this player loaded the map and its ready to load players, mobs and items
+        /// </summary>
         public void SendReady()
         {
             Hero h = Globals.Players[0];
@@ -154,6 +170,16 @@ namespace Mu
         {
             Hero h = Globals.Players[0];
             SendMessage(MsgHeader.PlayerPos, x, y);
+        }
+
+        /// <summary>
+        /// Send chat message
+        /// </summary>
+        /// <param name="text"></param>
+        /// <param name="flags">Extra info, might be used to display different color on the other side</param>
+        public void SendChat(string text, byte flags)
+        {
+            SendMessage(MsgHeader.Chat, text, flags);
         }
     }
     
@@ -179,5 +205,6 @@ namespace Mu
         public const byte AddPlayer = 3;
         public const byte RemovePlayer = 4;
         public const byte PlayerPos = 5;
+        public const byte Chat = 6;
     }
 }

@@ -8,6 +8,8 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using FlatRedBall.Screens;
+using Microsoft.Xna.Framework;
+using Color = Microsoft.Xna.Framework.Color;
 
 namespace Mu
 {
@@ -199,6 +201,16 @@ namespace Mu
                     Globals.Server.SendAll(msg.ToArray());
                     Write("Message sent");
                 }
+            });
+            //post to chat
+            AddCommand("post", delegate (string[] tokens)
+            {
+                if (tokens.Length <= 1)
+                    return;
+                string post = "";
+                for (int i = 1; i < tokens.Length;i++)
+                    post += tokens[i] + " ";
+                Globals.Chat.Post(post, Color.White, Color.Blue);
             });
         }
     }
