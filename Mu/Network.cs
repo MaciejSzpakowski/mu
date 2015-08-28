@@ -338,43 +338,47 @@ namespace Mu
         /// <returns></returns>
         public void SendMessage(params object[] elements)
         {
-            int length = GetSize(elements) + 1;
+            int length = GetSize(elements);
             byte[] msg = new byte[length];
-            //start writing at one because 0th byte carries length
-            int index = 1;
             msg[0] = (byte)(length - 1);
-            for (int i = 0; i < elements.Length; i++)
+            msg[1] = (byte)elements.Length;
+            //start writing at x because 0 byte carries length, 1 format len, and 2 - n is format
+            int index = elements.Length + 2;
+            int formatIndex = 2;
+            for (int i = 1; i < elements.Length; i++)
             {
                 //byte/char
                 if (elements[i] is byte || elements[i] is char)
                 {
-                    msg[index] = Convert.ToByte(elements[i]);
-                    index++;
+                    msg[index++] = Convert.ToByte(elements[i]);
+                    msg[formatIndex++] = Convert.ToByte('c');
                 }
                 //bool
                 else if (elements[i] is bool)
                 {
-                    msg[index] = (bool)elements[i] ? (byte)1 : (byte)0;
-                    index++;
+                    msg[index++] = (bool)elements[i] ? (byte)1 : (byte)0;
+                    msg[formatIndex++] = Convert.ToByte('b');
                 }
                 //string
                 else if (elements[i] is string)
                 {
+                    msg[formatIndex++] = Convert.ToByte('s');
                     byte strLen = (byte)((string)elements[i]).Length;
-                    msg[index] = strLen;
-                    index++;
+                    msg[index++] = strLen;
                     Array.Copy(Encoding.ASCII.GetBytes((string)elements[i]), 0, msg, index, ((string)elements[i]).Length);
                     index += ((string)elements[i]).Length;
                 }
                 //int
                 else if (elements[i] is int)
                 {
+                    msg[formatIndex++] = Convert.ToByte('i');
                     Array.Copy(BitConverter.GetBytes((int)elements[i]), 0, msg, index, 4);
                     index += 4;
                 }
                 //float
                 else if (elements[i] is float)
                 {
+                    msg[formatIndex++] = Convert.ToByte('f');
                     Array.Copy(BitConverter.GetBytes((float)elements[i]), 0, msg, index, 4);
                     index += 4;
                 }
@@ -382,10 +386,12 @@ namespace Mu
             zSendMessage(msg);
         }
 
-        private static int GetSize(params object[] obj)
+        private int GetSize(params object[] obj)
         {
-            int length = 0;
-            for (int i = 0; i < obj.Length; i++)
+            if (obj[0].GetType() != typeof(byte))
+                throw new ArgumentException("First sent item must be byte as header");
+            int length = 1;
+            for (int i = 1; i < obj.Length; i++)
             {
                 if (obj[i] is byte || obj[i] is char || obj[i] is bool)
                     length++;
@@ -398,6 +404,11 @@ namespace Mu
                 else
                     throw new ArgumentException("Unrecognizable type");
             }
+            //length: how many bytes data will take
+            length++;
+            //format length and format
+            if (obj.Length > 1)
+                length += 1 + obj.Length;
             return length;
         }
 
