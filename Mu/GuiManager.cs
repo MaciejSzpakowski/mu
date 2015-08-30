@@ -1,5 +1,4 @@
-﻿using FlatRedBall.Gui;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -59,10 +58,7 @@ namespace Mu
             }
         }
 
-        public bool GetMbResult(MessageBoxReturn result, string msg)
-        {
-            return result == LastMessageBoxReturn && msg == LastMbMessage;
-        }
+        public bool CompareMBresult(MessageBoxReturn result, string msg) => result == LastMessageBoxReturn && msg == LastMbMessage;
 
         private void MouseEnterLeave()
         {

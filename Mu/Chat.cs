@@ -4,7 +4,8 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Xna.Framework;
-using FlatRedBall.Input;
+using Keys = Microsoft.Xna.Framework.Input.Keys;
+using static FlatRedBall.Input.InputManager;
 
 namespace Mu
 {
@@ -49,17 +50,32 @@ namespace Mu
             zStartIndex = -1;
             InitEvents();
             zMessageTextBox = new TextBox(this);
+            zMessageTextBox.MaxLength = 35;            
             zMessageTextBox.InitProps(Position + new Vector2(3, 0), new Vector2(10, 1), new Color(0.1f, 0.1f, 0.1f, 1), "", Color.White);
+            zMessageTextBox.AutoScale = true;
+            zMessageTextBox.Visible = false;
             zMessageTextBox.OnEnter = delegate ()
             {
                 ProcessInput(zMessageTextBox.Text);
                 zMessageTextBox.Text = string.Empty;
+                zMessageTextBox.Visible = false;
             };
+            //hide if not typing
+            Globals.EventManager.AddEvent(delegate ()
+            {
+                if (zCollect)
+                    return 0;
+                if (!zMessageTextBox.IsTyping())
+                    zMessageTextBox.Visible = false;
+                return 1;
+            }, "hideifnotyping");
         }
 
         private void ProcessInput(string text)
         {
-            Post(Globals.Players[0].Name+": " + text, Color.White, Color.Black);
+            if (text == string.Empty)
+                return;
+            Say(Globals.Players[0].Name,text);
             Globals.Client.SendChat(text, 0);
         }
 
@@ -67,16 +83,15 @@ namespace Mu
         {
             Globals.EventManager.AddEvent(delegate ()
             {
-                Debug.Print(zStartIndex,"start index");
                 if (zCollect)
                     return 0;
                 if (zMessages.Count == 0)
                     return 1;
-                if (InputManager.Keyboard.KeyTyped(Microsoft.Xna.Framework.Input.Keys.PageDown))
+                if (Keyboard.KeyTyped(Keys.PageDown))
                 {
                     zStartIndex++;
                 }
-                else if (InputManager.Keyboard.KeyTyped(Microsoft.Xna.Framework.Input.Keys.PageUp))
+                else if (Keyboard.KeyTyped(Keys.PageUp))
                 {
                     zStartIndex--;
                 }
@@ -88,10 +103,19 @@ namespace Mu
             }, "chatscroll");
         }
 
-        public void Post(string text, Color foreground, Color background)
+        public void Say(string playerName, string text)
         {
-            if (text == string.Empty)
-                return;
+            Post($"{playerName}: {text}", Color.White, Color.Black);
+        }
+
+        public void StartTyping()
+        {
+            zMessageTextBox.Visible = true;
+            zMessageTextBox.Focus();
+        }
+
+        private void Post(string text, Color foreground, Color background)
+        {
             zStartIndex++;
             zMessages.Enqueue(new ChatMessage(text, foreground, background));
             if (zMessages.Count > zMaxCount)

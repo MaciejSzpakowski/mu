@@ -1,7 +1,7 @@
 ﻿using FlatRedBall;
 using FlatRedBall.Graphics;
-using FlatRedBall.Input;
-using FlatRedBall.Math.Geometry;
+using Keys = Microsoft.Xna.Framework.Input.Keys;
+using static FlatRedBall.Input.InputManager;
 using FlatRedBall.Screens;
 using Microsoft.Xna.Framework;
 using System;
@@ -9,7 +9,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
-using System.Threading.Tasks;
 
 namespace Mu
 {
@@ -34,7 +33,7 @@ namespace Mu
                 zFileName = fileName;
                 SaveHero shero = (SaveHero)Functions.Deserialize(fileName);
                 zHeroName = shero.Name;
-                Text = shero.Name + "\nLvl"+ shero.Level.ToString();
+                Text = $"{shero.Name}\nLvl{shero.Level.ToString()}";
                 zText.RelativePosition.Y += 3;
                 zText.RelativePosition.X += 0.5f;
                 zText.HorizontalAlignment = HorizontalAlignment.Center;
@@ -57,11 +56,11 @@ namespace Mu
                 switch (shero.Class)
                 {
                     case HeroClass.Elf:
-                        return Functions.AddSpriteFromAchx(Path.Make(Path.Texture, "elf.achx"));
+                        return Functions.AddSpriteFromAchx(Path.Make(Path.Hero, "elf.achx"));
                     case HeroClass.Knight:
-                        return Functions.AddSpriteFromAchx(Path.Make(Path.Texture, "knight.achx"));
+                        return Functions.AddSpriteFromAchx(Path.Make(Path.Hero, "knight.achx"));
                     case HeroClass.Wizard:
-                        return Functions.AddSpriteFromAchx(Path.Make(Path.Texture, "wizard.achx"));
+                        return Functions.AddSpriteFromAchx(Path.Make(Path.Hero, "wizard.achx"));
                     default:
                         return null;
                 }
@@ -157,17 +156,17 @@ namespace Mu
                 Sprite s1 = null;
                 if (c == HeroClass.Elf)
                 {
-                    s1 = Functions.AddSpriteFromAchx(Path.Make(Path.Texture, "elf.achx"));
+                    s1 = Functions.AddSpriteFromAchx(Path.Make(Path.Hero, "elf.achx"));
                     zCharSprite.Text = "Elf";
                 }
                 else if (c == HeroClass.Knight)
                 {
-                    s1 = Functions.AddSpriteFromAchx(Path.Make(Path.Texture, "knight.achx"));
+                    s1 = Functions.AddSpriteFromAchx(Path.Make(Path.Hero, "knight.achx"));
                     zCharSprite.Text = "Knight";
                 }
                 else if (c == HeroClass.Wizard)
                 {
-                    s1 = Functions.AddSpriteFromAchx(Path.Make(Path.Texture, "wizard.achx"));
+                    s1 = Functions.AddSpriteFromAchx(Path.Make(Path.Hero, "wizard.achx"));
                     zCharSprite.Text = "Wizard";
                 }
                 SpriteManager.RemoveSprite(s1);
@@ -335,7 +334,7 @@ namespace Mu
                 Globals.Server.Stop();
             Globals.Server = new Server();
             if (!Globals.Server.Start(Globals.Port))
-                new MessageBox("Could start the server");
+                new MessageBox("Could not start the server");
             else
             {
                 Globals.Server.StartAccepting();
@@ -398,7 +397,7 @@ namespace Mu
 
         private void DeleteCharacterRoutine()
         {
-            new MessageBox("Delete this char ?\n" + zSelectedChar.zHeroName, MessageBoxType.YesNo);
+            new MessageBox($"Delete this char ?\n{zSelectedChar.zHeroName}", MessageBoxType.YesNo);
             Globals.EventManager.AddEvent(delegate ()
             {
                 if (Globals.GuiManager.LastMessageBoxReturn == MessageBoxReturn.YES)
@@ -422,8 +421,7 @@ namespace Mu
         public override void Activity(bool firstTimeCalled)
         {
             Globals.GuiManager.Activity();
-            if(Globals.Server != null)
-                Globals.Server.Activity();
+            Globals.Server?.Activity();
             //test
             TestActivity();
 
@@ -433,6 +431,8 @@ namespace Mu
 
         public override void Destroy()
         {
+            if (Globals.Server.GetState() == ServerState.Running)
+                Globals.Server.RemoveMobs();
             Globals.GuiManager.Clear();
             foreach (MenuCharacter m in zChars)
                 m.Destroy();
@@ -444,8 +444,8 @@ namespace Mu
 
         public void TestActivity()
         {
-            Debug.Print(InputManager.Mouse.WorldXAt(0).ToString() + " "
-                + InputManager.Mouse.WorldXAt(0).ToString());
+            Debug.Print(Mouse.WorldXAt(0).ToString() + " "
+                + Mouse.WorldXAt(0).ToString());
         }
     }
 }

@@ -8,7 +8,6 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading;
-using System.Threading.Tasks;
 using IOPath = System.IO.Path;
 
 namespace Mu
@@ -86,32 +85,35 @@ namespace Mu
     {
         public static string Root;
         public static string Data;
-        public static string Texture;
-        public static string Font;
         public static string Save;
-        public static string Map;
 
-        public static string Make(params string[] paths)
-        {
-            return IOPath.Combine(paths);
-        }
+        public static string Hero;
+        public static string Mob;
+        public static string Font;       
+        public static string Map;
+        public static string Misc;
+        public static string Item;
+
+        public static string Make(params string[] paths) => IOPath.Combine(paths);
+
         public static void SetRoot(string root)
         {
             Root = root;
             Data = IOPath.Combine(Root, "data");
-            Texture = Data;
-            Font = Data;
-            Save = IOPath.Combine(Root, "saves");
-            Map = Data;
+            Save = IOPath.Combine(Root, "save");
+            Hero = IOPath.Combine(Data, "hero");
+            Mob = IOPath.Combine(Data, "mobs");
+            Font = IOPath.Combine(Data, "fonts");
+            Map = IOPath.Combine(Data, "maps");
+            Misc = IOPath.Combine(Data, "misc");
+            Item = IOPath.Combine(Data, "items");
+            Map = IOPath.Combine(Data, "maps");
         }
     }
 
     public static class Functions
     {
-        public static Color GetColor(this Text text)
-        {
-            return new Color(text.Red, text.Green, text.Blue, text.Alpha);
-        }
+        public static Color GetColor(this Text text) => new Color(text.Red, text.Green, text.Blue, text.Alpha);
 
         public static void ClipCursorInGameWindow()
         {
@@ -193,53 +195,49 @@ namespace Mu
 
         /// <summary>
         /// Get array of bytes and reinterprets it as array of objects
-        /// order of objects has to be provided as format string
         /// elements:b - bool, c - char/byte, i - int, f - float, s - string
         /// </summary>
         /// <param name="elements"></param>
         /// <returns></returns>
-        public static object[] GetData(byte[] sourceArray, string elements)
+        public static List<object> GetData(byte[] sourceArray)
         {
             //start at 1 because 0 is header
             int sourceIndex = 1;
-            int destinationIndex = 0;
-            object[] result = new object[elements.Length];
-            for (int i = 0; i < elements.Length; i++)
+            List<object> result = new List<object>();
+            while(sourceIndex < sourceArray.Length)
             {
-                if (elements[i] == 'b')
+                byte currentByte = sourceArray[sourceIndex++];
+                //bool
+                if (currentByte == 'b')
                 {
-                    result[destinationIndex] = sourceArray[sourceIndex] == 0 ? false : true;
-                    sourceIndex++;
-                    destinationIndex++;
+                    result.Add(sourceArray[sourceIndex++] == 0 ? false : true);
                 }
-                else if (elements[i] == 'c')
+                //char/byte
+                else if (currentByte == 'c')
                 {
-                    result[destinationIndex] = sourceArray[sourceIndex];
-                    sourceIndex++;
-                    destinationIndex++;
+                    result.Add(sourceArray[sourceIndex++]);
                 }
-                else if (elements[i] == 'i')
+                //int
+                else if (currentByte == 'i')
                 {
-                    result[destinationIndex] = BitConverter.ToInt32(sourceArray, sourceIndex);
+                    result.Add(BitConverter.ToInt32(sourceArray, sourceIndex));
                     sourceIndex += 4;
-                    destinationIndex++;
                 }
-                else if (elements[i] == 'f')
+                //float
+                else if (currentByte == 'f')
                 {
-                    result[destinationIndex] = BitConverter.ToSingle(sourceArray, sourceIndex);
+                    result.Add(BitConverter.ToSingle(sourceArray, sourceIndex));
                     sourceIndex += 4;
-                    destinationIndex++;
                 }
-                else if (elements[i] == 's')
+                //string
+                else if (currentByte == 's')
                 {
-                    int strLen = Convert.ToInt32(sourceArray[sourceIndex]);
-                    sourceIndex++;
-                    result[destinationIndex] = System.Text.Encoding.ASCII.GetString(sourceArray, sourceIndex, strLen);
+                    int strLen = Convert.ToInt32(sourceArray[sourceIndex++]);
+                    result.Add(Encoding.ASCII.GetString(sourceArray, sourceIndex, strLen));
                     sourceIndex += strLen;
-                    destinationIndex++;
                 }
                 else
-                    throw new ArgumentException("ReadMessage(), unrecognized char");
+                    throw new ArgumentException("unrecognized format");
             }
             return result;
         }
@@ -253,39 +251,43 @@ namespace Mu
         /// Returns foat between 0.0 and 1.0
         /// </summary>
         /// <returns></returns>
-        public static float NextFloat()
-        {
-            return (float)rnd.NextDouble();
-        }
+        public static float NextFloat() => (float)rnd.NextDouble();
 
         /// <summary>
-        /// Returns float between min and max
+        /// Returns float between greate or equal min and less than max
         /// </summary>
         /// <param name="min"></param>
         /// <param name="max"></param>
         /// <returns></returns>
         public static float NextFloat(float min, float max)
         {
-            if (max <= min)
-                throw new ArgumentOutOfRangeException("max must be greater than min");
+            if (max < min)
+                throw new ArgumentOutOfRangeException("max must be greater or equal min");
             double d = rnd.NextDouble() * (max - min) + min;
             return (float)d;
         }
 
         /// <summary>
-        /// Returns int between min and max
+        /// Returns int between min and max both inclusive
         /// </summary>
         /// <param name="min"></param>
         /// <param name="max"></param>
         /// <returns></returns>
         public static int NextInt(int min, int max)
         {
-            if (max <= min)
-                throw new ArgumentOutOfRangeException("max must be greater than min");
+            if (max < min)
+                throw new ArgumentOutOfRangeException("max must be greater or equal min");
             return rnd.Next(min, max + 1);
         }
 
-        public static void TextRng()
+        /// <summary>
+        /// Tries event based on chance
+        /// </summary>
+        /// <param name="chance"></param>
+        /// <returns></returns>
+        public static bool Try(double chance) => rnd.NextDouble() < chance;
+
+        public static void TestRng()
         {
             for (int k = 0; k < 100000; k++)
             {
@@ -312,7 +314,7 @@ namespace Mu
             }
             catch (Exception e)
             {
-                Debug.Write("Ini has errors");
+                Debug.Write("Ini has errors: "+e.Message);
             }
         }
 

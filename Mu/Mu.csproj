@@ -83,9 +83,12 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Chat.cs" />
+    <Compile Include="LevelMapInput.cs" />
     <Compile Include="GuiManager.cs" />
     <Compile Include="Hero.cs" />
     <Compile Include="MainMenu.cs" />
+    <Compile Include="Mob.cs" />
+    <Compile Include="MobClass.cs" />
     <Compile Include="NetworkMessages.cs" />
     <Compile Include="Console.cs">
       <SubType>Form</SubType>

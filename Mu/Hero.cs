@@ -1,7 +1,6 @@
 ﻿using FlatRedBall;
 using FlatRedBall.Graphics;
 using FlatRedBall.Graphics.Animation;
-using FlatRedBall.Input;
 using FlatRedBall.Math.Geometry;
 using FlatRedBall.Screens;
 using Microsoft.Xna.Framework;
@@ -10,7 +9,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
-using System.Threading.Tasks;
+using Keys = Microsoft.Xna.Framework.Input.Keys;
+using static FlatRedBall.Input.InputManager;
+using static FlatRedBall.Input.Mouse;
 
 namespace Mu
 {
@@ -53,6 +54,7 @@ namespace Mu
 
         public Hero(string name, HeroClass heroClass)
         {
+            Online = TimeSpan.Zero;
             Target = Position;
             AcceptArrows = true;
             zLastPosition = Position;
@@ -81,11 +83,11 @@ namespace Mu
         private Sprite LoadSprite()
         {
             if (Class == HeroClass.Elf)
-                return Functions.AddSpriteFromAchx(Path.Make(Path.Texture, "elf.achx"));
+                return Functions.AddSpriteFromAchx(Path.Make(Path.Hero, "elf.achx"));
             else if (Class == HeroClass.Knight)
-                return Functions.AddSpriteFromAchx(Path.Make(Path.Texture, "knight.achx"));
+                return Functions.AddSpriteFromAchx(Path.Make(Path.Hero, "knight.achx"));
             else if (Class == HeroClass.Wizard)
-                return Functions.AddSpriteFromAchx(Path.Make(Path.Texture, "wizard.achx"));
+                return Functions.AddSpriteFromAchx(Path.Make(Path.Hero, "wizard.achx"));
             return null;
         }
 
@@ -133,10 +135,10 @@ namespace Mu
         private void InputMovement()
         {
             //8 directions
-            bool left = InputManager.Keyboard.KeyDown(Microsoft.Xna.Framework.Input.Keys.Left);
-            bool right = InputManager.Keyboard.KeyDown(Microsoft.Xna.Framework.Input.Keys.Right);
-            bool up = InputManager.Keyboard.KeyDown(Microsoft.Xna.Framework.Input.Keys.Up);
-            bool down = InputManager.Keyboard.KeyDown(Microsoft.Xna.Framework.Input.Keys.Down);
+            bool left = Keyboard.KeyDown(Keys.Left);
+            bool right = Keyboard.KeyDown(Keys.Right);
+            bool up = Keyboard.KeyDown(Keys.Up);
+            bool down = Keyboard.KeyDown(Keys.Down);
             if (left && up)
                 Velocity = new Vector3(-zWalkingSpeed * 0.707f, zWalkingSpeed * 0.707f, 0);
             else if (right && up)

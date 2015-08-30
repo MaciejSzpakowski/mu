@@ -8,7 +8,8 @@ using FlatRedBall.Screens;
 using Microsoft.Xna.Framework;
 using System.Linq;
 using IOPath = System.IO.Path;
-using FlatRedBall.Input;
+using Keys = Microsoft.Xna.Framework.Input.Keys;
+using static FlatRedBall.Input.InputManager;
 
 namespace Mu
 {
@@ -40,9 +41,9 @@ namespace Mu
             Debug.PrintDebug = new PrintDebug();
             Debug.PrintDebug.Show(gameWindow);
             string unique = Window.Handle.ToString();
-            Window.Title = "Mu " + unique;
-            Debug.PrintDebug.Text = "PrintDebug " + unique;
-            Debug.Console.Text = "Console " + unique;
+            Window.Title = $"Mu {unique}";
+            Debug.PrintDebug.Text = $"PrintDebug {unique}";
+            Debug.Console.Text = $"Console {unique}";
         }
 
         private void LoadGlobalAssets()
@@ -53,6 +54,7 @@ namespace Mu
 
         protected override void Initialize()
         {
+            Path.SetRoot(".");
             Path.SetRoot("c:\\bajery\\mu");
             //Path.SetRoot("C:\\Users\\Maciej\\OneDrive\\mu");
             if (Globals.CommandLineArgs.Contains("debug"))
@@ -80,8 +82,8 @@ namespace Mu
             Globals.EventManager.PostActivity();
             if (Debug.DebugMode)
             {
-                if (InputManager.Keyboard.KeyDown(Microsoft.Xna.Framework.Input.Keys.LeftControl) &&
-                    InputManager.Keyboard.KeyPushed(Microsoft.Xna.Framework.Input.Keys.H))
+                if (Keyboard.KeyDown(Keys.LeftControl) &&
+                    Keyboard.KeyPushed(Keys.H))
                 {
                     Debug.Console.Visible = !Debug.Console.Visible;
                     Debug.PrintDebug.Visible = !Debug.PrintDebug.Visible;

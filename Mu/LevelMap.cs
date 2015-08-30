@@ -7,7 +7,8 @@ using System.Threading.Tasks;
 using FlatRedBall;
 using FlatRedBall.Screens;
 using FlatRedBall.Math.Geometry;
-using FlatRedBall.Input;
+using Keys = Microsoft.Xna.Framework.Input.Keys;
+using static FlatRedBall.Input.InputManager;
 using System.IO;
 using Microsoft.Xna.Framework;
 
@@ -39,7 +40,7 @@ namespace Mu
 
         private void AddTile(string[] tokens)
         {
-            Tile t = new Tile(Path.Make(Path.Texture, tokens[1]));
+            Tile t = new Tile(Path.Make(Path.Map, tokens[1]));
             Vector3 pos = StringToVector3(tokens[3]);
             Vector3 scale = StringToVector3(tokens[5]);
             t.zSprite.Position = pos;
@@ -65,7 +66,7 @@ namespace Mu
         }
     }
 
-    public class LevelMap : Screen
+    public partial class LevelMap : Screen
     {
         public LevelMap()
             : base("LevelMap")
@@ -89,9 +90,7 @@ namespace Mu
         }
 
         public void Exit()
-        {
-            Globals.Client.Disconnect(false);
-            Destroy();
+        {            
             ScreenManager.CurrentScreen.MoveToScreen(typeof(MainMenu));
         }
 
@@ -101,9 +100,9 @@ namespace Mu
             // escape event
             Event e1 = Globals.EventManager.AddEvent(delegate ()
             {
-                if (InputManager.Keyboard.KeyPushed(Microsoft.Xna.Framework.Input.Keys.Escape))
+                if (Keyboard.KeyPushed(Keys.Escape))
                     new MessageBox("Exit ?", MessageBoxType.YesNo, "levelmapexit");
-                if (Globals.GuiManager.GetMbResult(MessageBoxReturn.YES, "levelmapexit"))
+                if (Globals.GuiManager.CompareMBresult(MessageBoxReturn.YES, "levelmapexit"))
                     Exit();
                 return 1;
             }, "escapemap");
@@ -111,7 +110,7 @@ namespace Mu
             // disconnected
             e1 = Globals.EventManager.AddEvent(delegate ()
             {
-                if (Globals.GuiManager.GetMbResult(MessageBoxReturn.OK, "disconnected"))
+                if (Globals.GuiManager.CompareMBresult(MessageBoxReturn.OK, "disconnected"))
                     Exit();
                 return 1;
             }, "disconnected");
@@ -135,7 +134,8 @@ namespace Mu
             //test
             TestActivity();
             //gui
-            Globals.GuiManager.Activity();            
+            Globals.GuiManager.Activity();
+            Input();
             //server and client
             if(Globals.Server != null)
                 Globals.Server.Activity();
@@ -160,6 +160,10 @@ namespace Mu
 
         public override void Destroy()
         {
+            Globals.Client.Disconnect(false);
+            Globals.Client.Destroy();
+            if (Globals.Server.GetState() == ServerState.Running)
+                Globals.Server.RemoveMobs();
             foreach (Event e in zEvents)
                 Globals.EventManager.RemoveEvent(e);
             foreach (Hero h in Globals.Players)
@@ -177,8 +181,8 @@ namespace Mu
 
         public void TestActivity()
         {
-            Debug.Print(InputManager.Mouse.WorldXAt(0).ToString() + " " 
-                + InputManager.Mouse.WorldXAt(0).ToString());
+            Debug.Print(Mouse.WorldXAt(0).ToString() + " " 
+                + Mouse.WorldXAt(0).ToString());
         }
     }
 

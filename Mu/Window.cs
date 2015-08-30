@@ -5,8 +5,9 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
-using FlatRedBall.Input;
+using Keys = Microsoft.Xna.Framework.Input.Keys;
+using static FlatRedBall.Input.InputManager;
+using static FlatRedBall.Input.Mouse;
 using FlatRedBall.Gui;
 
 namespace Mu
@@ -45,7 +46,7 @@ namespace Mu
             Name = string.Empty;
             zOrigin = new Vector2(0, 0);
             if (sprite == "")
-                zSprite = SpriteManager.AddSprite(Path.Make(Path.Texture, "pixel.bmp"));
+                zSprite = SpriteManager.AddSprite(Path.Make(Path.Misc, "pixel.bmp"));
             else
                 zSprite = SpriteManager.AddSprite(sprite);
             zSprite.ColorOperation = ColorOperation.ColorTextureAlpha;
@@ -83,7 +84,7 @@ namespace Mu
             zLayer = SpriteManager.AddLayer();
             if (zModal)
             {
-                MoveToFront();
+                BringToFront();
                 Globals.GuiManager.AddModalWindow(this);
             }
             else
@@ -105,7 +106,7 @@ namespace Mu
             return SpriteManager.Layers.IndexOf(zLayer) > SpriteManager.Layers.IndexOf(w.zLayer);
         }
 
-        public void MoveToFront()
+        public void BringToFront()
         {
             SpriteManager.MoveToFront(zLayer);
         }        
@@ -142,7 +143,7 @@ namespace Mu
         public void ExecuteMouseRoutine()
         {
             Hover();
-            if (InputManager.Mouse.ButtonPushed(Mouse.MouseButtons.LeftButton))
+            if (Mouse.ButtonPushed(MouseButtons.LeftButton))
             {
                 if (zParent == null)
                     Functions.ClipCursorInGameWindow();
@@ -163,7 +164,7 @@ namespace Mu
                 Globals.GuiManager.zDoGetWindows = true;
                 return 0;
             }
-            if (InputManager.Mouse.ButtonReleased(Mouse.MouseButtons.LeftButton))
+            if (Mouse.ButtonReleased(MouseButtons.LeftButton))
             {
                 Functions.UnclipCursor();
                 OnClick();
@@ -181,21 +182,18 @@ namespace Mu
         /// </summary>
         protected void Drag()
         {
-            Position += new Vector2(InputManager.Mouse.WorldXChangeAt(0), -InputManager.Mouse.WorldYChangeAt(0));
+            Position += new Vector2(Mouse.WorldXChangeAt(0), -Mouse.WorldYChangeAt(0));
         }
 
         /// <summary>
         /// //mark for drag, click and bring window to front
         /// </summary>
-        protected void Focus()
+        public virtual void Focus()
         {
-            MoveToFront();
+            BringToFront();
         }
 
-        public bool IsUnderCursor()
-        {
-            return Visible && GuiManager.Cursor.IsOn(zSprite);
-        }
+        public bool IsUnderCursor() => Visible && GuiManager.Cursor.IsOn(zSprite);
 
         public void InitProps(Vector2 pos, Vector2 size, Color color, string text, Color textColor)
         {
@@ -348,9 +346,9 @@ namespace Mu
         {
             if (zCollect)
                 return 0;
-            if (InputManager.Keyboard.KeyPushed(Microsoft.Xna.Framework.Input.Keys.Escape))
+            if (Keyboard.KeyPushed(Keys.Escape))
             {
-                InputManager.Keyboard.IgnoreKeyForOneFrame(Microsoft.Xna.Framework.Input.Keys.Escape);
+                Keyboard.IgnoreKeyForOneFrame(Keys.Escape);
                 Destroy();                
                 return 0;
             }
@@ -364,9 +362,14 @@ namespace Mu
         public uint MaxLength;
         private char carret;
         private string input;
+        private bool zAutoScale;
+        private float zOriginalScalex;
+        private bool zTypinRoutineRunning;
 
         public TextBox(Window owner) : base(owner)
         {
+            zTypinRoutineRunning = false;
+            zAutoScale = false;
             input = string.Empty;
             carret = (char)300;
             MaxLength = uint.MaxValue;
@@ -374,40 +377,74 @@ namespace Mu
             OnClick = StartTyping;
             zText.RelativePosition.X = 0.5f;
             zText.RelativePosition.Y = -zSprite.ScaleY;
+            Globals.EventManager.AddEvent(AutoScalling, "autoscalling");
+            zOriginalScalex = Size.X;
         }
 
         public void StartTyping()
         {
-            Globals.EventManager.AddEvent(TypingRoutine, "TypingRoutine");
+            if (!Globals.EventManager.HasEvent("typingroutine"))
+            {
+                zTypinRoutineRunning = true;
+                Globals.EventManager.AddEvent(TypingRoutine, "typingroutine");
+            }
         }
+
+        public bool IsTyping() => zTypinRoutineRunning;
 
         private int TypingRoutine()
         {
             if (zCollect)
-                return 0;            
-            input += InputManager.Keyboard.GetStringTyped();
+            {
+                zTypinRoutineRunning = false;
+                return 0;
+            }
+            input += Keyboard.GetStringTyped();
             //limit
             if (input.Length > MaxLength)
                 input = input.Remove((int)MaxLength);
             //backspace if length > 0
             if (input.Length > 0 && 
-                InputManager.Keyboard.KeyTyped(Microsoft.Xna.Framework.Input.Keys.Back))
+                Keyboard.KeyTyped(Keys.Back))
                 input = input.Remove(input.Length - 1);
             zText.DisplayText = input;
             CarretActivity();
             //end routine if clicked
-            if (InputManager.Mouse.ButtonPushed(Mouse.MouseButtons.LeftButton))
+            if (Mouse.ButtonPushed(MouseButtons.LeftButton))
             {
                 RemoveCarret();
+                zTypinRoutineRunning = false;
+                return 0;
+            }
+            //escape cancels typing
+            if (Keyboard.KeyPushed(Keys.Escape))
+            {
+                Keyboard.IgnoreKeyForOneFrame(Keys.Escape);
+                Text = string.Empty;
+                zTypinRoutineRunning = false;
                 return 0;
             }
             //onenter
-            if (InputManager.Keyboard.KeyPushed(Microsoft.Xna.Framework.Input.Keys.Enter))
+            if (Keyboard.KeyPushed(Keys.Enter))
             {
                 RemoveCarret();
                 OnEnter();
+                zTypinRoutineRunning = false;
                 return 0;
             }
+            return 1;
+        }
+
+        private int AutoScalling()
+        {
+            if (zCollect)
+                return 0;
+            if (!zAutoScale)
+                return 1;
+            if(Size.X > zOriginalScalex)
+                Size = new Vector2(zOriginalScalex, Size.Y);
+            if (zText.Width + 1 > Size.X)
+                Size = new Vector2(zText.Width + 1, Size.Y);
             return 1;
         }
 
@@ -429,6 +466,25 @@ namespace Mu
         {
             if (zText.DisplayText.Length == 0 || zText.DisplayText.Last() != carret)
                 zText.DisplayText += carret.ToString();
+        }
+
+        public override void Focus()
+        {
+            StartTyping();
+            base.Focus();
+        }
+
+        public bool AutoScale
+        {
+            get
+            {
+                return zAutoScale;
+            }
+            set
+            {
+                zOriginalScalex = Size.X;
+                zAutoScale = value;
+            }
         }
 
         public override string Text
@@ -520,9 +576,9 @@ namespace Mu
         {
             if (zCollect)
                 return 0;
-            if (InputManager.Keyboard.KeyPushed(Microsoft.Xna.Framework.Input.Keys.Escape))
+            if (Keyboard.KeyPushed(Keys.Escape))
             {
-                InputManager.Keyboard.IgnoreKeyForOneFrame(Microsoft.Xna.Framework.Input.Keys.Escape);
+                Keyboard.IgnoreKeyForOneFrame(Keys.Escape);
                 Globals.GuiManager.LastMessageBoxReturn = MessageBoxReturn.NO;
                 Destroy();
                 return 0;

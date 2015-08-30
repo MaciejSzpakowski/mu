@@ -124,7 +124,7 @@ namespace Mu
             {
                 if (tokens.Length <= 1 || Globals.Client == null)
                     return;
-                Globals.Client.SendMessage(tokens[1]);
+                Globals.Client.SendMessage(MsgHeader.Null, tokens[1]);
                 Write("Message sent");
             });
             //disconnect
@@ -185,7 +185,7 @@ namespace Mu
             {
                 if (tokens.Length <= 1 || Globals.Server == null)
                     return;
-                if (Globals.Server.State == ServerState.Stopped)
+                if (Globals.Server.GetState() == ServerState.Stopped)
                     return;
                 List<byte> msg = new List<byte>();
                 for (int i = 0; i < tokens.Length; i++)
@@ -198,7 +198,7 @@ namespace Mu
                     Write("Message to short");
                 else
                 {
-                    Globals.Server.SendAll(msg.ToArray());
+                    Globals.Server.SendAll(MsgHeader.Null, msg.ToArray());
                     Write("Message sent");
                 }
             });
@@ -208,10 +208,15 @@ namespace Mu
                 if (tokens.Length <= 1)
                     return;
                 string post = "";
-                for (int i = 1; i < tokens.Length;i++)
+                for (int i = 1; i < tokens.Length; i++)
                     post += tokens[i] + " ";
-                Globals.Chat.Post(post, Color.White, Color.Blue);
+                Globals.Chat.Say(Globals.Players[0].Name, post);
             });
+            //add mob
+            AddCommand("spawnmob", delegate (string[] toknes)
+             {
+                 Globals.Server.SpawnMob(MobClass.BudgeDragon);
+             });
         }
     }
 }

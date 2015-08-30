@@ -1,8 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Mu
 {
@@ -96,6 +94,10 @@ namespace Mu
                 zEvents.Add(e);
             return e;
         }
+
+        public bool HasEvent(string eventName) => zEvents.Any(e => e.zName == eventName);
+
+        public bool HasEvent(Event e) => zEvents.Contains(e);
 
         /// <summary>
         /// Remove event by name, nothing happens if it doesnt exist
