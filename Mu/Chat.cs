@@ -63,7 +63,7 @@ namespace Mu
             //hide if not typing
             Globals.EventManager.AddEvent(delegate ()
             {
-                if (zCollect)
+                if (Collect)
                     return 0;
                 if (!zMessageTextBox.IsTyping())
                     zMessageTextBox.Visible = false;
@@ -83,7 +83,7 @@ namespace Mu
         {
             Globals.EventManager.AddEvent(delegate ()
             {
-                if (zCollect)
+                if (Collect)
                     return 0;
                 if (zMessages.Count == 0)
                     return 1;

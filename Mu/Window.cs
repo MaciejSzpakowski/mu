@@ -28,18 +28,18 @@ namespace Mu
         public Window zParent;
         public Layer zLayer;
         public List<Window> zChildren;
-        private Vector2 zOrigin; //i need this crap to maintain correct offset from origin
+        protected Vector2 zOrigin; //i need this crap to maintain correct offset from origin
         public Sprite Sprite { get { return zSprite; } }
         public bool zModal;
         public bool Immovable;
         private Event zEventEscape;
-        protected bool zCollect; //used to signal running events that this window has been destroyed
+        protected bool Collect; //used to signal running events that this window has been destroyed
 
         public Window(Window owner = null, bool modal = false, string sprite = "")
         {            
             if (owner != null && modal)
                 throw new ArgumentException("Child cannot be modal");
-            zCollect = false;
+            Collect = false;
             Immovable = false;
             zEventEscape = null;
             zModal = modal;
@@ -156,7 +156,7 @@ namespace Mu
 
         protected int ClickRoutine()
         {
-            if (zCollect)
+            if (Collect)
                 return 0;
             HoverMousedown();
             if (zParent != null && !IsUnderCursor())
@@ -219,7 +219,7 @@ namespace Mu
         /// </summary>
         public virtual void Destroy()
         {
-            zCollect = true;
+            Collect = true;
             if (zParent != null)
                 throw new AccessViolationException("Window.Destroy() can be called on top level window only");
             SpriteManager.RemoveSprite(zSprite);
@@ -240,7 +240,7 @@ namespace Mu
         /// </summary>
         public void DestroyChild()
         {
-            zCollect = true;
+            Collect = true;
             if (zParent == null)
                 throw new AccessViolationException("Window.DestroyChild() can be called on child window only");
 
@@ -344,7 +344,7 @@ namespace Mu
 
         private int zCloseWithEscape()
         {
-            if (zCollect)
+            if (Collect)
                 return 0;
             if (Keyboard.KeyPushed(Keys.Escape))
             {
@@ -394,7 +394,7 @@ namespace Mu
 
         private int TypingRoutine()
         {
-            if (zCollect)
+            if (Collect)
             {
                 zTypinRoutineRunning = false;
                 return 0;
@@ -437,7 +437,7 @@ namespace Mu
 
         private int AutoScalling()
         {
-            if (zCollect)
+            if (Collect)
                 return 0;
             if (!zAutoScale)
                 return 1;
@@ -574,7 +574,7 @@ namespace Mu
 
         private int MbEscape()
         {
-            if (zCollect)
+            if (Collect)
                 return 0;
             if (Keyboard.KeyPushed(Keys.Escape))
             {

@@ -24,22 +24,23 @@ namespace Mu
 
     public class Hero : PositionedObject
     {
-        private Circle zCollider;
-        private Sprite zSprite;        
-        private Text zLabel;
-        private Sprite zHealthBar;
-        private HeroStats zStats;
-        private float zWalkingSpeed;
+        private Circle Collider;
+        private Sprite Sprite;        
+        private Text Label;
+        private Sprite HealthBar;
+        private HeroStats Stats;
+        private float WalkingSpeed;
         public int Netid;
         private Vector3 zLastPosition;
         public bool AcceptArrows;
         public Vector3 Target; //used by other players
+        private bool Collect;
 
         //serializable
         public HeroClass Class;
         public float ExperienceBoost;
         public TimeSpan Online; //how much time hero has been played
-        public string Map; //what map is it on
+        public MobMap Map; //what map is it on
         //stats
         public long Gold;
         public long Level;
@@ -54,6 +55,7 @@ namespace Mu
 
         public Hero(string name, HeroClass heroClass)
         {
+            Collect = false;
             Online = TimeSpan.Zero;
             Target = Position;
             AcceptArrows = true;
@@ -62,20 +64,20 @@ namespace Mu
             Name = name;
             Class = heroClass;
             SpriteManager.AddPositionedObject(this);
-            zCollider = ShapeManager.AddCircle();
-            zCollider.AttachTo(this, false);
-            zCollider.Visible = false;
-            zSprite = LoadSprite();
-            zSprite.AttachTo(this, false);
-            zSprite.Resize(4);
-            zSprite.AnimationSpeed = 0.1f;
+            Collider = ShapeManager.AddCircle();
+            Collider.AttachTo(this, false);
+            Collider.Visible = false;
+            Sprite = LoadSprite();
+            Sprite.AttachTo(this, false);
+            Sprite.Resize(4);
+            Sprite.AnimationSpeed = 0.1f;
             Position.Z = ZLayer.Npc;
-            zLabel = TextManager.AddText(name, Globals.Font);
-            zLabel.AttachTo(this, false);
-            zLabel.HorizontalAlignment = HorizontalAlignment.Center;
-            zLabel.RelativePosition = new Vector3(0, 4, ZLayer.NpcLabel - Position.Z);
+            Label = TextManager.AddText(name, Globals.Font);
+            Label.AttachTo(this, false);
+            Label.HorizontalAlignment = HorizontalAlignment.Center;
+            Label.RelativePosition = new Vector3(0, 4, ZLayer.NpcLabel - Position.Z);
 
-            zWalkingSpeed = 10;
+            WalkingSpeed = 10;
 
             InitStats();
         }
@@ -101,7 +103,7 @@ namespace Mu
             ExpPrevious = 0;
             ExpNext = 100;
             StatPoints = 0;
-            Map = "lorencia.map";
+            Map = MobMap.Lorencia;
             if (Class == HeroClass.Elf)
             {
                 //Map = "noria.map";
@@ -140,21 +142,21 @@ namespace Mu
             bool up = Keyboard.KeyDown(Keys.Up);
             bool down = Keyboard.KeyDown(Keys.Down);
             if (left && up)
-                Velocity = new Vector3(-zWalkingSpeed * 0.707f, zWalkingSpeed * 0.707f, 0);
+                Velocity = new Vector3(-WalkingSpeed * 0.707f, WalkingSpeed * 0.707f, 0);
             else if (right && up)
-                Velocity = new Vector3(zWalkingSpeed * 0.707f, zWalkingSpeed * 0.707f, 0);
+                Velocity = new Vector3(WalkingSpeed * 0.707f, WalkingSpeed * 0.707f, 0);
             else if (right && down)
-                Velocity = new Vector3(zWalkingSpeed * 0.707f, -zWalkingSpeed * 0.707f, 0);
+                Velocity = new Vector3(WalkingSpeed * 0.707f, -WalkingSpeed * 0.707f, 0);
             else if (left && down)
-                Velocity = new Vector3(-zWalkingSpeed * 0.707f, -zWalkingSpeed * 0.707f, 0);
+                Velocity = new Vector3(-WalkingSpeed * 0.707f, -WalkingSpeed * 0.707f, 0);
             else if (left)
-                Velocity = new Vector3(-zWalkingSpeed, 0, 0);
+                Velocity = new Vector3(-WalkingSpeed, 0, 0);
             else if (up)
-                Velocity = new Vector3(0, zWalkingSpeed, 0);
+                Velocity = new Vector3(0, WalkingSpeed, 0);
             else if (right)
-                Velocity = new Vector3(zWalkingSpeed, 0, 0);
+                Velocity = new Vector3(WalkingSpeed, 0, 0);
             else if (down)
-                Velocity = new Vector3(0, -zWalkingSpeed, 0);
+                Velocity = new Vector3(0, -WalkingSpeed, 0);
         }
 
         public void Activity(bool hero)
@@ -179,28 +181,28 @@ namespace Mu
             {
                 Velocity = Target - Position;
                 Velocity.Normalize();
-                Velocity *= zWalkingSpeed;
+                Velocity *= WalkingSpeed;
             }
         }
 
         private bool FlipHorizontal = false;
         public void AnimationControl()
         {
-            if ((Velocity != Vector3.Zero) && zSprite.CurrentChainName != "Walk")
+            if ((Velocity != Vector3.Zero) && Sprite.CurrentChainName != "Walk")
             {
                 float walkingAnimationSpeed = 0.33f;
-                zSprite.AnimationSpeed = walkingAnimationSpeed;
-                zSprite.CurrentChainName = "Walk";
+                Sprite.AnimationSpeed = walkingAnimationSpeed;
+                Sprite.CurrentChainName = "Walk";
             }
-            else if (Velocity == Vector3.Zero && zSprite.CurrentChainName != "Idle")
+            else if (Velocity == Vector3.Zero && Sprite.CurrentChainName != "Idle")
             {
-                zSprite.CurrentChainName = "Idle";
+                Sprite.CurrentChainName = "Idle";
             }
-            if (Velocity.X < 0 && zSprite.FlipHorizontal)
+            if (Velocity.X < 0 && Sprite.FlipHorizontal)
                 FlipHorizontal = false;
-            else if (Velocity.X > 0 && !zSprite.FlipHorizontal)
+            else if (Velocity.X > 0 && !Sprite.FlipHorizontal)
                 FlipHorizontal = true;
-            zSprite.FlipHorizontal = FlipHorizontal;
+            Sprite.FlipHorizontal = FlipHorizontal;
         }
 
         public void StartUpdatingPos()
@@ -210,6 +212,8 @@ namespace Mu
 
         private int UpdatePos()
         {
+            if (Collect)
+                return 0;
             if (zLastPosition != Position)
             {
                 Globals.Client.SendPos(Position.X, Position.Y);
@@ -240,19 +244,13 @@ namespace Mu
             return shero;
         }
 
-        public void DestroyThisPlayer()
-        {
-            Globals.EventManager.RemoveEvent("updatepos");
-        }
-
         public void Destroy()
         {
-            if (Globals.Players.Count > 0 && this == Globals.Players[0])
-                DestroyThisPlayer();            
-            ShapeManager.Remove(zCollider);
-            SpriteManager.RemoveSprite(zSprite);
-            SpriteManager.RemoveSprite(zHealthBar);
-            TextManager.RemoveText(zLabel);
+            Collect = true;
+            ShapeManager.Remove(Collider);
+            SpriteManager.RemoveSprite(Sprite);
+            SpriteManager.RemoveSprite(HealthBar);
+            TextManager.RemoveText(Label);
             SpriteManager.RemovePositionedObject(this);
         }
     }
@@ -260,7 +258,7 @@ namespace Mu
     [Serializable]
     public class SaveHero
     {
-        public string Map;
+        public MobMap Map;
         public HeroClass Class;
         public string Name;
         public float Str;

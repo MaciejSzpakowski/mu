@@ -18,21 +18,13 @@ namespace Mu
 
     public partial class Mob : Circle
     {
-        private void InitSprite(string file)
-        {
-            Sprite = Functions.AddSpriteFromAchx(Path.Make(Path.Mob, file));
-            Sprite.CurrentChainName = "Idle";
-            Sprite.Resize(4);
-            Sprite.IgnoresParentVisibility = true;
-            Sprite.AttachTo(this, false);
-        }
-
         private void InitClass()
         {
             switch (Class)
             {
                 case MobClass.BudgeDragon:
-                    InitSprite("bdragon.achx");
+                    File = "bdragon.achx";
+                    Name = "Budge Dragon";
                     break;
             }
         }

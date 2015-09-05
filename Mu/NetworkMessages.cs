@@ -27,7 +27,7 @@ namespace Mu
                     UpdatePlayerPos(c, data);
                     break;
                 case MsgHeader.Chat:
-                    RelayMessage(c, data);
+                    RelayMessage(c, data, RelaySwitch.All);
                     break;
                 default:
                     throw new ArgumentException("Unhandled message received by server");
@@ -47,15 +47,16 @@ namespace Mu
             var data = Functions.GetData(rawdata);
             c.Hero.Position.X = (float)data[0];
             c.Hero.Position.Y = (float)data[1];
-            RelayMessage(c, rawdata);
+            RelayMessage(c, rawdata, RelaySwitch.Room);
         }
 
+        public enum RelaySwitch { Room, All };
         /// <summary>
         /// Appends netid and resend to everyone else than c
         /// </summary>
         /// <param name="c">who was sender originally</param>
         /// <param name="rawdata">this is 'data' array from 'Server.ProcessMessage()'</param>
-        private void RelayMessage(ServerClient c, byte[] rawdata)
+        private void RelayMessage(ServerClient c, byte[] rawdata, RelaySwitch rswitch)
         {
             //+6 means 1 byte in the fron for len, 1 byte in the back for format and very last 4 bytes for int
             byte[] relaymsg = new byte[rawdata.Length + 6];
@@ -66,9 +67,18 @@ namespace Mu
             relaymsg[rawdata.Length + 1] = (byte)'i';
             Array.Copy(c.zNetidBytes, 0, relaymsg, rawdata.Length + 2, 4);
             //resend
-            for (int i = 0; i < Clients.Count; i++)
-                if (Clients[i] != c)
-                    Clients[i].zSendMessage(relaymsg);
+            if (rswitch == RelaySwitch.Room)
+            {
+                for (int i = 0; i < c.Room.Clients.Count; i++)
+                    if (c.Room.Clients[i] != c)
+                        c.Room.Clients[i].zSendMessage(relaymsg);
+            }
+            else
+            {
+                foreach (MapRoom r in Rooms.Values)
+                    foreach (ServerClient client in r.Clients.Where(p => p != c))
+                        client.zSendMessage(relaymsg);
+            }
         }
 
         /// <summary>
@@ -80,16 +90,38 @@ namespace Mu
             var data = Functions.GetData(rawData);
             client.Hero.Name = data[0] as string;
             client.Hero.Class = (HeroClass)Convert.ToChar(data[1]);
+            MobMap heroMap = (MobMap)Convert.ToChar(data[2]);
+            TransferClient(client, MobMap.Lorencia, heroMap);
             client.Hero.Position = new Vector3(0, 0, 0);
             //tell old players about new player and new player about old players
-            foreach (var c in Clients.Where(c1 => c1 != client))
+            foreach (var c in client.Room.Clients.Where(c1 => c1 != client))
             {
                 client.SendAddPlayer(c.Hero);
                 c.SendAddPlayer(client.Hero);
             }
-            foreach (Mob m in Mobs)
+            //send mob data
+            foreach (Mob m in client.Room.Mobs)
                 client.SendNewMob(m);
-        }        
+        }
+
+        private void TransferClient(ServerClient c, MobMap src, MobMap dst)
+        {
+            c.Room = Rooms[dst];
+            ClientMutex.WaitOne();
+            Rooms[src].Clients.Remove(c);
+            Rooms[dst].Clients.Add(c);
+            ClientMutex.ReleaseMutex();
+        }
+
+        /// <summary>
+        /// Update mob pos (target)
+        /// </summary>
+        /// <param name="m"></param>
+        public void SendMobTarget(Mob m)
+        {
+            foreach (ServerClient c in Rooms[m.Map].Clients)
+                c.SendMobTarget(m);
+        }
     }
 
     public partial class Client : ServerClient
@@ -101,7 +133,7 @@ namespace Mu
         {
             byte[] data = msg.Data;
             byte header = data[0];
-            if (Debug.DebugMode && data[0] != MsgHeader.PlayerPos)
+            if (Debug.DebugMode && data[0] != MsgHeader.PlayerPos && data[0] != MsgHeader.Mobpos)
                 PrintMsg(data);
 
             switch (header)
@@ -126,9 +158,21 @@ namespace Mu
                 case MsgHeader.Newmob:
                     AddMob(data);
                     break;
+                case MsgHeader.Mobpos:
+                    UpdateMobPos(data);
+                    break;
                 default:
                     throw new ArgumentException("Unhandled message received by client");
             }
+        }
+
+        private void UpdateMobPos(byte[] rawdata)
+        {
+            var data = Functions.GetData(rawdata);
+            Mob m = GetMobFromNetid((int)data[0]);
+            m.Target = new Vector3((float)data[1], (float)data[2], ZLayer.Npc);
+            if (m.Netid == 1)
+                Debug.Write($"New target {m.Target} received");
         }
 
         private void AddMob(byte[] rawdata)
@@ -137,6 +181,7 @@ namespace Mu
             Mob m = Mob.MobClient((MobClass)data[0]);
             m.Netid = (int)data[1];
             m.Position = new Vector3((float)data[2], (float)data[3], ZLayer.Npc);
+            m.Target = m.Position;            
             Mobs.Add(m);
         }        
 
@@ -188,7 +233,7 @@ namespace Mu
         public void SendReady()
         {
             Hero h = Globals.Players[0];
-            SendMessage(MsgHeader.ClientReady, h.Name, (char)h.Class);
+            SendMessage(MsgHeader.ClientReady, h.Name, (char)h.Class, (char)h.Map);
         }
 
         public void SendPos(float x,float y)
@@ -225,6 +270,13 @@ namespace Mu
         {
             SendMessage(MsgHeader.Newmob, (int)m.Class, m.Netid, m.Position.X, m.Position.Y);
         }
+
+        public void SendMobTarget(Mob m)
+        {
+            if (m.Netid == 1)
+                Debug.Write($"New target {m.Target} sent");
+            SendMessage(MsgHeader.Mobpos, m.Netid, m.Target.X, m.Target.Y);
+        }
     }
 
     public static class MsgHeader
@@ -237,5 +289,6 @@ namespace Mu
         public const byte PlayerPos = 5;
         public const byte Chat = 6;
         public const byte Newmob = 7;
+        public const byte Mobpos = 8;
     }
 }

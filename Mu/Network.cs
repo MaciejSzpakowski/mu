@@ -23,34 +23,54 @@ namespace Mu
         }
     }
 
+    public class MapRoom
+    {
+        public MobMap Map;
+        public List<ServerClient> Clients;
+        public PositionedObjectList<Mob> Mobs;
+
+        public MapRoom(MobMap map)
+        {
+            Map = map;
+            Clients = new List<ServerClient>();
+            Mobs = new PositionedObjectList<Mob>();
+        }
+    }
+
     public partial class Server
     {
         private ServerState State;
         private Mutex ClientMutex;
-        private TcpListener Socket;
-        private List<ServerClient> Clients;
+        private TcpListener Socket;        
         private Thread AcceptClientsThread;
         private int NextId;
         public int zUpload;
         private int Download;
         private int DisplayUp;
         private int DisplayDown;
-        private PositionedObjectList<Mob> Mobs;
-
-        public int ClientCount { get { return Clients.Count; } }
+        private Dictionary<MobMap,MapRoom> Rooms;
 
         public Server()
         {
-            Mobs = new PositionedObjectList<Mob>();
+            Rooms = new Dictionary<MobMap, MapRoom>();
+            InsertAllRooms();
             DisplayUp = zUpload = 0;
             DisplayDown = Download = 0;
             NextId = 1;
             ClientMutex = new Mutex();
             Socket = null;
-            State = ServerState.Stopped;            
-            Clients = new List<ServerClient>();
+            State = ServerState.Stopped;
             AcceptClientsThread = new Thread(new ThreadStart(AcceptClients));
             AcceptClientsThread.IsBackground = true;
+        }
+
+        private void InsertAllRooms()
+        {
+            Rooms.Add(MobMap.Devias, new MapRoom(MobMap.Devias));
+            Rooms.Add(MobMap.Dungeon, new MapRoom(MobMap.Dungeon));
+            Rooms.Add(MobMap.Lorencia, new MapRoom(MobMap.Lorencia));
+            Rooms.Add(MobMap.LostTower, new MapRoom(MobMap.LostTower));
+            Rooms.Add(MobMap.Noria, new MapRoom(MobMap.Noria));
         }
 
         public bool Start(int port)
@@ -73,12 +93,14 @@ namespace Mu
             return true;
         }
 
-        public void SpawnMob(MobClass mobclas)
+        public Mob SpawnMob(MobClass mobclas, MobMap map)
         {
-            Mob m = Mob.MobServer(mobclas);
-            Mobs.Add(m);
-            foreach (ServerClient c in Clients)
+            Mob m = Mob.MobServer(mobclas,map);
+            MapRoom room = Rooms[map];
+            room.Mobs.Add(m);
+            foreach (ServerClient c in room.Clients)
                 c.SendNewMob(m);
+            return m;
         }        
 
         private int UpdateTransfer()
@@ -122,49 +144,52 @@ namespace Mu
         /// </summary>
         public void Activity()
         {
-            Debug.Print(Clients.Count,"Server client count");
+            int clientsCount = 0;
+            
             Debug.Print(DisplayUp, "Upload");
             Debug.Print(DisplayDown, "Download");
-            //Debug.Print(zAcceptClientsThread.ThreadState, "Accepting thread");
-            for (int i = Clients.Count - 1; i >= 0; i--)
+            foreach(MapRoom r in Rooms.Values)
             {
-                //Debug.Print(zClients[i].ReceiveThread.ThreadState, $"Client {i} receiving thread");
-                var msg = DequeueMessage(Clients[i]);
-                if (msg != null)
+                for (int i = r.Clients.Count - 1; i >= 0; i--)
                 {
-                    ProcessMessage(msg, Clients[i]);
-                    Download += msg.Data.Length + 1;
+                    clientsCount++;
+                    ClientActivity(r.Clients[i]);
                 }
-                if (Clients[i].ReceiveThread.ThreadState == ThreadState.Stopped)
-                    RemoveClient(Clients[i]);
+                //mobs
+                for (int i = r.Mobs.Count - 1; i >= 0; i--)
+                    r.Mobs[i].ServerActivity();
             }
-            //mobs
-            for (int i = Mobs.Count - 1; i >= 0; i--)
-                Mobs[i].ServerActivity();
+            Debug.Print(clientsCount, "Server client count");
+        }
+
+        private void ClientActivity(ServerClient c)
+        {
+            var msg = DequeueMessage(c);
+            if (msg != null)
+            {
+                ProcessMessage(msg, c);
+                Download += msg.Data.Length + 1;
+            }
+            if (c.ReceiveThread.ThreadState == ThreadState.Stopped)
+            {
+                ClientMutex.WaitOne();
+                RemoveClient(c);
+                ClientMutex.ReleaseMutex();
+            }
         }
 
         public void RemoveClient(ServerClient c)
         {
             Debug.Write($"{c.IP} disconnected");
-            foreach (var c1 in Clients.Where(c2 => c2 != c))
+            foreach (var c1 in c.Room.Clients.Where(c2 => c2 != c))
                 c1.SendRemovePlayer(c);
             c.Socket.Close();
             ClientMutex.WaitOne();
-            Clients.Remove(c);
+            c.Room.Clients.Remove(c);
             ClientMutex.ReleaseMutex();
         }
 
         public ServerState GetState() => State;
-
-        /// <summary>
-        /// Send message to all clients
-        /// </summary>
-        /// <param name="message">bytes to send</param>
-        public void SendAll(byte header,params object[] obj)
-        {
-            foreach (ServerClient c in Clients)
-                c.SendMessage(header,obj);
-        }
 
         /// <summary>
         /// Returns and removes 
@@ -173,22 +198,31 @@ namespace Mu
         /// <returns></returns>
         private Message DequeueMessage(ServerClient c) => c.mDequeueMessage();
 
+        /// <summary>
+        /// Closes all sockets, destroys all mobs and players.
+        /// </summary>
         public void Stop()
         {
             Debug.Write("Server stopped");
             State = ServerState.Stopped;
             Socket.Stop();
-            foreach (ServerClient c in Clients)
-                c.Socket.Close();
-            while (Mobs.Count > 0)
-                Mobs.Last.Destroy();
-            Clients.Clear();
+            foreach (MapRoom r in Rooms.Values)
+            {
+                foreach (ServerClient c in r.Clients)
+                {
+                    c.Socket.Close();
+                    while (r.Mobs.Count > 0)
+                        r.Mobs.Last.Destroy();
+                }
+                r.Clients.Clear();
+            }
         }
 
         public void RemoveMobs()
         {
-            foreach (Mob m in Mobs)
-                m.Remove();
+            foreach(MapRoom r in Rooms.Values)
+                foreach (Mob m in r.Mobs)
+                    m.Remove();
         }
 
         /// <summary>
@@ -207,7 +241,7 @@ namespace Mu
                     newClient.Hero.Netid = newClient.Id;
                     newClient.ReceiveThread.Start();
                     ClientMutex.WaitOne();
-                    Clients.Add(newClient);
+                    Rooms[MobMap.Lorencia].Clients.Add(newClient);
                     ClientMutex.ReleaseMutex();
                     //send welcome msg
                     newClient.SendMessage(MsgHeader.Welcome);
@@ -227,7 +261,7 @@ namespace Mu
         private ClientState State;
         private bool ReceivedWelcomeMessage;
         private float WelcomeMessageTimeout;
-        private PositionedObjectList<Mob> Mobs;
+        private PositionedObjectList<Mob> Mobs;        
 
         public Client() : base(null)
         {
@@ -312,6 +346,7 @@ namespace Mu
         public void Activity()
         {
             Debug.Print(Globals.Client.zReceiveThread.ThreadState,"Client receiver");
+            Debug.Print($"Buffer count: {BufferSize}");
             //early break
             if (State == ClientState.Disconnected)
                 return;
@@ -358,6 +393,8 @@ namespace Mu
         protected Thread zReceiveThread;
         public ClientHero Hero;
         public byte[] zNetidBytes;
+        public MapRoom Room;
+        protected int BufferSize;
 
         public string IP { get { return zIP; } }
         public TcpClient Socket { get { return zSocket; } }
@@ -365,7 +402,9 @@ namespace Mu
         public Thread ReceiveThread { get { return zReceiveThread; } }
 
         public ServerClient(TcpClient client)
-        {                
+        {
+            BufferSize = 0;
+            Room = null;
             zMsgMutex = new Mutex();
             zMessages = new Queue<Message>();
             zSocket = client;
@@ -468,7 +507,7 @@ namespace Mu
             ns.Write(message, 0, message.Length);
             ns.Flush();
             //debug
-            if (Debug.DebugMode && message[1] != MsgHeader.PlayerPos)
+            if (Debug.DebugMode && message[1] != MsgHeader.PlayerPos && message[1] != MsgHeader.Mobpos)
                 PrintMsg(message);
         }
 
@@ -542,9 +581,11 @@ namespace Mu
                     break;
 
                 for (int i = 0; i < len; i++)
-                    msgBuffer.Add(bytesReceived[i]);
+                    msgBuffer.Add(bytesReceived[i]);                
 
                 CheckAndDispatch(msgBuffer);
+                if(Debug.DebugMode)
+                    BufferSize = msgBuffer.Count;
             }
         }
 
@@ -555,10 +596,11 @@ namespace Mu
         protected void CheckAndDispatch(List<byte> msgBuffer)
         {
             //break if message is not complete
-            if (msgBuffer.Count <= msgBuffer[0])
-                return;
-            Dispatch(msgBuffer);
-            msgBuffer.RemoveRange(0, msgBuffer[0] + 1);
+            while (msgBuffer.Count > 0 && msgBuffer.Count > msgBuffer[0])
+            {
+                Dispatch(msgBuffer);
+                msgBuffer.RemoveRange(0, msgBuffer[0] + 1);
+            }
         }
 
         protected void Dispatch(List<byte> msgBuffer)

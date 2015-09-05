@@ -22,7 +22,26 @@ namespace Mu
         {
             zTiles = new List<Tile>();
 
-            LoadFromFile(file);
+            LoadFromFile(file);            
+        }
+
+        public static string MobmapToString(MobMap map)
+        {
+            switch (map)
+            {
+                case MobMap.Lorencia:
+                    return "lorencia.map";
+                case MobMap.Noria:
+                    return "noria.map";
+                case MobMap.Dungeon:
+                    return "dungeon.map";
+                case MobMap.Devias:
+                    return "devias.map";
+                case MobMap.LostTower:
+                    return "losttower.map";
+                default:
+                    throw new NotImplementedException("This map is not implemented");
+            }
         }
 
         private void LoadFromFile(string file)
@@ -73,8 +92,8 @@ namespace Mu
         {
         }
 
-        Map zMap;
-        List<Event> zEvents;
+        Map Map;
+        List<Event> Events;
 
         public override void Initialize(bool addToManagers)
         {
@@ -96,7 +115,7 @@ namespace Mu
 
         private void InitEvents()
         {
-            zEvents = new List<Event>();
+            Events = new List<Event>();
             // escape event
             Event e1 = Globals.EventManager.AddEvent(delegate ()
             {
@@ -106,7 +125,7 @@ namespace Mu
                     Exit();
                 return 1;
             }, "escapemap");
-            zEvents.Add(e1);
+            Events.Add(e1);
             // disconnected
             e1 = Globals.EventManager.AddEvent(delegate ()
             {
@@ -114,12 +133,12 @@ namespace Mu
                     Exit();
                 return 1;
             }, "disconnected");
-            zEvents.Add(e1);
+            Events.Add(e1);
         }
 
         private void InitMap()
         {
-            zMap = new Map(Path.Make(Path.Map,Globals.Players[0].Map));
+            Map = new Map(Path.Make(Path.Map, Map.MobmapToString(Globals.Players[0].Map)));
         }
 
         private void InitHero()
@@ -162,16 +181,16 @@ namespace Mu
         {
             Globals.Client.Disconnect(false);
             Globals.Client.Destroy();
-            if (Globals.Server.GetState() == ServerState.Running)
+            if (Globals.Server?.GetState() == ServerState.Running)
                 Globals.Server.RemoveMobs();
-            foreach (Event e in zEvents)
+            foreach (Event e in Events)
                 Globals.EventManager.RemoveEvent(e);
             foreach (Hero h in Globals.Players)
                 h.Destroy();
             Globals.Players.Clear();
             Globals.GuiManager.Clear();
             Globals.Chat = null;
-            zMap.Destroy();
+            Map.Destroy();
             base.Destroy();
         }
 

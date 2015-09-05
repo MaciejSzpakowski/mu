@@ -180,28 +180,6 @@ namespace Mu
                         Globals.Client.Connect(tokens[1], port);
                 }
             });
-            //sendall from server to all clients
-            AddCommand("sendall", delegate (string[] tokens)
-            {
-                if (tokens.Length <= 1 || Globals.Server == null)
-                    return;
-                if (Globals.Server.GetState() == ServerState.Stopped)
-                    return;
-                List<byte> msg = new List<byte>();
-                for (int i = 0; i < tokens.Length; i++)
-                {
-                    byte b = 0;
-                    if (byte.TryParse(tokens[i], out b))
-                        msg.Add(b);
-                }
-                if (msg.Count == 0)
-                    Write("Message to short");
-                else
-                {
-                    Globals.Server.SendAll(MsgHeader.Null, msg.ToArray());
-                    Write("Message sent");
-                }
-            });
             //post to chat
             AddCommand("post", delegate (string[] tokens)
             {
@@ -214,9 +192,12 @@ namespace Mu
             });
             //add mob
             AddCommand("spawnmob", delegate (string[] toknes)
-             {
-                 Globals.Server.SpawnMob(MobClass.BudgeDragon);
-             });
+            {
+                for (int i = 0; i < 6; i++)
+                {
+                    Mob m = Globals.Server.SpawnMob(MobClass.BudgeDragon, MobMap.Lorencia);
+                }
+            });
         }
     }
 }

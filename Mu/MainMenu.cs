@@ -283,9 +283,11 @@ namespace Mu
                     MainMenu m = (MainMenu)ScreenManager.CurrentScreen;
                     m.DeleteCharacterRoutine();
                 };
-                //event set visible if sometihng is selected
+                //event set visible if something is selected
                 Globals.EventManager.AddEvent(delegate ()
                 {
+                    if (Collect)
+                        return 0;
                     MainMenu m = (MainMenu)ScreenManager.CurrentScreen;
                     delcharbutton.Visible = m.zSelectedChar != null;
                     playbutton.Visible = m.zSelectedChar != null;
@@ -305,12 +307,6 @@ namespace Mu
                 {
                     FlatRedBallServices.Game.Exit();
                 };
-            }
-
-            public override void Destroy()
-            {
-                Globals.EventManager.RemoveEvent("delcharbuttonvisibility");
-                base.Destroy();
             }
         }
 
@@ -431,7 +427,7 @@ namespace Mu
 
         public override void Destroy()
         {
-            if (Globals.Server.GetState() == ServerState.Running)
+            if (Globals.Server?.GetState() == ServerState.Running)
                 Globals.Server.RemoveMobs();
             Globals.GuiManager.Clear();
             foreach (MenuCharacter m in zChars)

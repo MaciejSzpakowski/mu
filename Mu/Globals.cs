@@ -35,6 +35,7 @@ namespace Mu
 
     public static class Debug
     {
+        private static int UniqueInt = 1;
         public static bool DebugMode = false;
         public static PrintDebug PrintDebug = null;
         public static Console Console = null;
@@ -66,6 +67,13 @@ namespace Mu
                 Console.Write(str);
             }
             msgQueueMutex.ReleaseMutex();            
+        }
+
+        public static int GetUnique()
+        {
+            int res = UniqueInt;
+            UniqueInt++;
+            return res;
         }
     }
 
@@ -115,6 +123,13 @@ namespace Mu
     {
         public static Color GetColor(this Text text) => new Color(text.Red, text.Green, text.Blue, text.Alpha);
 
+        public static void SetColor(this Text t, Color c)
+        {
+            Vector4 v = new Vector4(c.R / 255f, c.G / 255f, c.B / 255f, c.A / 255f);
+            t.SetColor(v.X, v.Y, v.Z);
+            t.Alpha = v.W;
+        }
+
         public static void ClipCursorInGameWindow()
         {
             var rect = FlatRedBallServices.Game.Window.ClientBounds;
@@ -127,28 +142,16 @@ namespace Mu
             System.Windows.Forms.Cursor.Clip = System.Drawing.Rectangle.Empty;
         }
 
-        public static float Clamp(this float f, float min, float max)
+        public static T Clamp<T>(this T f, T min, T max) where T : IComparable
         {
-            if (max < min)
+            if (min.CompareTo(max) > 0)
                 throw new ArgumentOutOfRangeException("max must be greater than min");
-            if (f > max)
+            if (f.CompareTo(max) > 0)
                 return max;
-            else if (f < min)
+            else if (f.CompareTo(min) < 0)
                 return min;
             else
                 return f;
-        }
-
-        public static int Clamp(this int i, int min, int max)
-        {
-            if (max < min)
-                throw new ArgumentOutOfRangeException("max must be greater or equal min");
-            if (i > max)
-                return max;
-            else if (i < min)
-                return min;
-            else
-                return i;
         }
 
         public static float Distance2D(this PositionedObject t, PositionedObject p)
