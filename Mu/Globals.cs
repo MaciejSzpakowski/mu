@@ -1,6 +1,7 @@
 ﻿using FlatRedBall;
 using FlatRedBall.Graphics;
 using FlatRedBall.Graphics.Animation;
+using FlatRedBall.Math;
 using Microsoft.Xna.Framework;
 using System;
 using System.Collections.Generic;
@@ -22,7 +23,7 @@ namespace Mu
         public static GameTime GameTime = new GameTime();
         public static string HeroFile = "";
         public static string Ip = "";
-        public static List<Hero> Players = new List<Hero>();
+        public static PositionedObjectList<Hero> Players = new PositionedObjectList<Hero>();
         public static ushort Port = 0;
 
         //singletons
@@ -101,6 +102,7 @@ namespace Mu
         public static string Map;
         public static string Misc;
         public static string Item;
+        public static string Effect;
 
         public static string Make(params string[] paths) => IOPath.Combine(paths);
 
@@ -116,6 +118,7 @@ namespace Mu
             Misc = IOPath.Combine(Data, "misc");
             Item = IOPath.Combine(Data, "items");
             Map = IOPath.Combine(Data, "maps");
+            Effect = IOPath.Combine(Data, "effects");
         }
     }
 
@@ -194,6 +197,44 @@ namespace Mu
         {
             s.ScaleX = x;
             s.ScaleY = y;
+        }
+
+        public static string MobmapToString(this MobMap map)
+        {
+            switch (map)
+            {
+                case MobMap.Lorencia:
+                    return "lorencia.map";
+                case MobMap.Noria:
+                    return "noria.map";
+                case MobMap.Dungeon:
+                    return "dungeon.map";
+                case MobMap.Devias:
+                    return "devias.map";
+                case MobMap.LostTower:
+                    return "losttower.map";
+                default:
+                    throw new NotImplementedException("This map is not implemented");
+            }
+        }
+
+        public static MobMap StringToMobmap(this string map)
+        {
+            switch (map.ToLower())
+            {
+                case "lorencia.map":
+                    return MobMap.Lorencia;
+                case "noria.map":
+                    return MobMap.Noria;
+                case "dungeon.map":
+                    return MobMap.Dungeon;
+                case "devias.map":
+                    return MobMap.Devias;
+                case "losttower.map":
+                    return MobMap.LostTower;
+                default:
+                    throw new NotImplementedException("This map is not implemented");
+            }
         }
 
         /// <summary>

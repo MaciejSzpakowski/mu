@@ -30,28 +30,34 @@ namespace Mu
         public int Netid;
         private static int NextNetid = 0;
         public Vector3 Target;
-        private float RunSpeed;
-        private float RoamSpeed;
         private float MovingSpeed;
         public MobClass Class;
         public bool Removed;
         private Vector3 zLastTarget;
         public MobMap Map;
+        public MapRoom Room;
+        private float SenseDistance;
+        private float AttackDistance;
+        private TimeSpan AttackSpeed;
+        public ServerClient HeroTarget;
 
         private Mob()
         {
-            RunSpeed = 7;
-            RoamSpeed = 5;
-            MovingSpeed = RoamSpeed;
+            MovingSpeed = 6;
             Removed = false;
             Netid = 0;
             State = MobState.Roaming;
+            SenseDistance = 8;
+            AttackDistance = 2;
+            AttackSpeed = TimeSpan.FromSeconds(2);
+            HeroTarget = null;
             ShapeManager.AddCircle(this);
         }
 
-        public static Mob MobServer(MobClass mobclass, MobMap map)
+        public static Mob MobServer(MobClass mobclass, MobMap map, Vector2 pos)
         {
             Mob m = new Mob();
+            m.Target = m.Position = new Vector3(pos, ZLayer.Npc);
             m.Map = map;
             m.Netid = NextNetid++;
             m.Class = mobclass;
@@ -60,11 +66,13 @@ namespace Mu
             return m;
         }
 
-        public static Mob MobClient(MobClass mobclass)
+        public static Mob MobClient(MobClass mobclass, Vector2 pos)
         {
             Mob m = new Mob();
             m.Class = mobclass;
-            //m.Visible = false;
+            m.Target = m.Position = new Vector3(pos, ZLayer.Npc);
+            if(!Debug.DebugMode)
+                m.Visible = false;
             m.Color = Color.Red;
             m.InitClass();
             m.InitSprite(m.File);
@@ -74,18 +82,124 @@ namespace Mu
 
         public void ServerActivity()
         {
+            GotoTarget();
             //restore removed mobs
             if (Removed)
             {
                 ShapeManager.AddCircle(this);
                 Removed = false;
             }
-            CommonActivity();
+            switch (State)
+            {
+                case MobState.Roaming:
+                    ServerRoaming();
+                    break;
+                case MobState.Chasing:
+                    ServerChasing();
+                    break;
+                case MobState.Atacking:
+                    ServerAttacking();
+                    break;
+                default:
+                    break;
+            }
+        }
+
+        private void ServerRoaming()
+        {
+            //find target thats close enough            
+            ServerClient target = Room.Clients.FirstOrDefault(c =>
+            (Position - c.Hero.Position).LengthSquared() < SenseDistance * SenseDistance);
+            if (target != null)
+            {
+                State = MobState.Chasing;
+                HeroTarget = target;
+            }
+        }
+
+        private void ServerChasing()
+        {
+            Target = HeroTarget.Hero.Position;
+
+            //stop chasing if it's too far
+            if (HeroTarget == null || 
+                (Position - HeroTarget.Hero.Position).LengthSquared() > SenseDistance * SenseDistance)
+            {
+                State = MobState.Roaming;
+                HeroTarget = null;
+                return;
+            }
+
+            //start attacking if it's close enough
+            else if ((Position - HeroTarget.Hero.Position).LengthSquared() < AttackDistance * AttackDistance)
+            {
+                State = MobState.Atacking;
+                Target = Position;
+                Globals.EventManager.AddEvent(AttackHero, $"attacking{Netid}", 
+                    false, TimeSpan.Zero, TimeSpan.Zero, AttackSpeed);
+            }            
+        }
+
+        private void ServerAttacking()
+        {
+            if (HeroTarget == null)
+            {
+                State = MobState.Roaming;
+                Globals.EventManager.RemoveEvent($"attacking{Netid}");
+                return;
+            }
+
+            //stop attacking and start chasing if it's too far
+            //*1.5f is there so mob doesnt attack from the border of its range but rather from inside
+            //so player cant make a small step to force it to chase again
+            else if ((Position - HeroTarget.Hero.Position).LengthSquared() > 
+                AttackDistance * AttackDistance * 1.5f)
+            {
+                Globals.EventManager.RemoveEvent($"attacking{Netid}");
+                State = MobState.Chasing;
+                return;
+            }
+        }
+
+        private int AttackHero()
+        {
+            return 1;
         }
 
         public void ClientActivity()
         {
-            CommonActivity();
+            GotoTarget();
+            AnimationControl();
+        }
+
+        private bool FlipHorizontal = false;
+        public void AnimationControl()
+        {
+            //set to walk if non-zero V
+            if ((Velocity != Vector3.Zero) && Sprite.CurrentChainName != "Walk")
+            {
+                float walkingAnimationSpeed = 0.33f;
+                Sprite.AnimationSpeed = walkingAnimationSpeed;
+                Sprite.CurrentChainName = "Walk";
+            }
+            //attack
+            else if (Sprite.CurrentChainName == "Attack")
+            {
+                if (Sprite.JustCycled)
+                {
+                    Sprite.CurrentChainName = "Idle";
+                }
+            }
+            //set to idle if zero V
+            else if (Velocity == Vector3.Zero && Sprite.CurrentChainName != "Idle")
+            {
+                Sprite.CurrentChainName = "Idle";
+            }
+            if (Velocity.X < 0 && Sprite.FlipHorizontal)
+                FlipHorizontal = false;
+            else if (Velocity.X > 0 && !Sprite.FlipHorizontal)
+                FlipHorizontal = true;
+            Sprite.FlipHorizontal = FlipHorizontal;
         }
 
         public void SetName(string name, Color color)
@@ -93,26 +207,6 @@ namespace Mu
             Name = name;
             Label.DisplayText = name;
             Label.SetColor(color);
-        }
-
-        private void CommonActivity()
-        {
-            GotoTarget();
-            switch (State)
-            {
-                case MobState.Roaming:
-                    MovingSpeed = RoamSpeed;
-                    break;
-                case MobState.Chasing:
-                    MovingSpeed = RunSpeed;
-                    break;
-                case MobState.Atacking:
-                    break;
-                case MobState.Killed:
-                    break;
-                default:
-                    throw new ArgumentException("How did you get here ?");
-            }
         }
 
         private void InitSprite(string file)
@@ -149,6 +243,7 @@ namespace Mu
 
         private int UpdateTarget()
         {
+            //collect if its killed
             if (State == MobState.Killed)
                 return 0;
             if (zLastTarget != Target)
@@ -177,11 +272,12 @@ namespace Mu
 
         private int Roam()
         {
+            if (State == MobState.Killed)
+                return 0;
+            //set roam target only if its state is roaming
             if (State == MobState.Roaming)
-            {
-                Target = Position + new Vector3(Rng.NextFloat(-4, 4), Rng.NextFloat(-4, 4), 0);
-                StartRoaming();
-            }
+                Target = Position + new Vector3(Rng.NextFloat(-4, 4), Rng.NextFloat(-4, 4), 0); 
+            StartRoaming();
             return 0;
         }
 

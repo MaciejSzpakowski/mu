@@ -93,11 +93,13 @@ namespace Mu
             return true;
         }
 
-        public Mob SpawnMob(MobClass mobclas, MobMap map)
+        public Mob SpawnMob(MobClass mobclas, MobMap map, Vector2 pos)
         {
-            Mob m = Mob.MobServer(mobclas,map);
+            Mob m = Mob.MobServer(mobclas, map, pos);
+            m.Position = new Vector3(pos, ZLayer.Npc);
             MapRoom room = Rooms[map];
             room.Mobs.Add(m);
+            m.Room = room;
             foreach (ServerClient c in room.Clients)
                 c.SendNewMob(m);
             return m;
@@ -173,12 +175,12 @@ namespace Mu
             if (c.ReceiveThread.ThreadState == ThreadState.Stopped)
             {
                 ClientMutex.WaitOne();
-                RemoveClient(c);
+                RemoveAndDcClient(c);
                 ClientMutex.ReleaseMutex();
             }
         }
 
-        public void RemoveClient(ServerClient c)
+        public void RemoveAndDcClient(ServerClient c)
         {
             Debug.Write($"{c.IP} disconnected");
             foreach (var c1 in c.Room.Clients.Where(c2 => c2 != c))
@@ -240,9 +242,12 @@ namespace Mu
                     newClient.zNetidBytes = BitConverter.GetBytes(newClient.zId);
                     newClient.Hero.Netid = newClient.Id;
                     newClient.ReceiveThread.Start();
+                    //by default, everyone starts in lorencia, relocation occurs when client sends ready
+                    //message with correct room id
                     ClientMutex.WaitOne();
                     Rooms[MobMap.Lorencia].Clients.Add(newClient);
                     ClientMutex.ReleaseMutex();
+                    newClient.Room = Rooms[MobMap.Lorencia];
                     //send welcome msg
                     newClient.SendMessage(MsgHeader.Welcome);
                 }
@@ -261,12 +266,14 @@ namespace Mu
         private ClientState State;
         private bool ReceivedWelcomeMessage;
         private float WelcomeMessageTimeout;
-        private PositionedObjectList<Mob> Mobs;        
+        private PositionedObjectList<Mob> Mobs;
+        public bool Transfering; //if true client will reject all messages
 
         public Client() : base(null)
         {
             Mobs = new PositionedObjectList<Mob>();
             WelcomeMessageTimeout = 2;
+            Transfering = false;
         }
 
         public ClientState GetState() => State;
@@ -278,7 +285,7 @@ namespace Mu
         /// <param name="port"></param>
         public bool Connect(string host, int port)
         {
-            zMessages.Clear();
+            zMessages = new System.Collections.Concurrent.ConcurrentQueue<Message>();
             ReceivedWelcomeMessage = false;
             State = ClientState.Disconnected;
             zSocket = new TcpClient();
@@ -347,17 +354,28 @@ namespace Mu
         {
             Debug.Print(Globals.Client.zReceiveThread.ThreadState,"Client receiver");
             Debug.Print($"Buffer count: {BufferSize}");
+            Debug.Print($"Messages in queue:{zMessages.Count}");
             //early break
             if (State == ClientState.Disconnected)
                 return;
-            var msg = mDequeueMessage();
-            if (msg != null)
-                ProcessMessage(msg);
+            //process all messages in queue
+            while (zMessages.Count > 0)
+            {
+                var msg = mDequeueMessage();
+                if (msg != null)
+                    ProcessMessage(msg);
+            }
             if (State == ClientState.Connected && zReceiveThread.ThreadState == ThreadState.Stopped)
                 Disconnect(true);
             //mobs
             for (int i = Mobs.Count - 1; i >= 0; i--)
                 Mobs[i].ClientActivity();
+        }
+
+        public void DestroyMobs()
+        {
+            while (Mobs.Count > 0)
+                Mobs.Last.Destroy();
         }
 
         public void Destroy()
@@ -386,10 +404,9 @@ namespace Mu
     public partial class ServerClient
     {
         protected string zIP;
-        protected Mutex zMsgMutex;
         protected TcpClient zSocket;
         public int zId;
-        protected Queue<Message> zMessages;
+        protected System.Collections.Concurrent.ConcurrentQueue<Message> zMessages;
         protected Thread zReceiveThread;
         public ClientHero Hero;
         public byte[] zNetidBytes;
@@ -405,8 +422,7 @@ namespace Mu
         {
             BufferSize = 0;
             Room = null;
-            zMsgMutex = new Mutex();
-            zMessages = new Queue<Message>();
+            zMessages = new System.Collections.Concurrent.ConcurrentQueue<Message>();
             zSocket = client;
             if (client != null)
             {
@@ -534,9 +550,7 @@ namespace Mu
             Message result = null;
             if (zMessages.Count == 0)
                 return null;
-            zMsgMutex.WaitOne();
-            result = zMessages.Dequeue();
-            zMsgMutex.ReleaseMutex();
+            zMessages.TryDequeue(out result);
             return result;
         }
 
@@ -608,9 +622,7 @@ namespace Mu
             var newMsg = new Message();
             newMsg.Data = new byte[msgBuffer[0]];
             msgBuffer.CopyTo(1, newMsg.Data, 0, msgBuffer[0]);
-            zMsgMutex.WaitOne();
             zMessages.Enqueue(newMsg);
-            zMsgMutex.ReleaseMutex();
         }        
     }
 }

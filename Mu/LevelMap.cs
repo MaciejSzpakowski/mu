@@ -16,32 +16,13 @@ namespace Mu
 {
     public class Map
     {
-        List<Tile> zTiles;
+        private List<Tile> Tiles;
 
         public Map(string file)
         {
-            zTiles = new List<Tile>();
+            Tiles = new List<Tile>();
 
-            LoadFromFile(file);            
-        }
-
-        public static string MobmapToString(MobMap map)
-        {
-            switch (map)
-            {
-                case MobMap.Lorencia:
-                    return "lorencia.map";
-                case MobMap.Noria:
-                    return "noria.map";
-                case MobMap.Dungeon:
-                    return "dungeon.map";
-                case MobMap.Devias:
-                    return "devias.map";
-                case MobMap.LostTower:
-                    return "losttower.map";
-                default:
-                    throw new NotImplementedException("This map is not implemented");
-            }
+            LoadFromFile(file);
         }
 
         private void LoadFromFile(string file)
@@ -52,19 +33,43 @@ namespace Mu
                 string[] tokens = line.Split(' ');
                 if (tokens.Length == 0)
                     continue;
-                if (tokens[0] == "tile")
-                    AddTile(tokens);
+                switch (tokens[0])
+                {
+                    case "sprite":
+                        AddSprite(tokens);
+                        break;
+                    case "trigger":
+                        AddTrigger(tokens);
+                        break;
+                    case "empty":
+                        AddEmpty(tokens);
+                        break;
+                }
             }
         }
 
-        private void AddTile(string[] tokens)
+        private void AddEmpty(string[] tokens)
         {
-            Tile t = new Tile(Path.Make(Path.Map, tokens[1]));
+            Vector3 pos = StringToVector3(tokens[2]);
+            var t = new EmptyTile(pos, tokens[4]);
+            Tiles.Add(t);
+        }
+
+        private void AddTrigger(string[] tokens)
+        {
+            Vector3 pos = StringToVector3(tokens[2]);
+            float radius = 0;
+            float.TryParse(tokens[4], out radius);
+            var t = new TriggerTile(pos, radius, tokens[6]);
+            Tiles.Add(t);
+        }
+
+        private void AddSprite(string[] tokens)
+        {
             Vector3 pos = StringToVector3(tokens[3]);
             Vector3 scale = StringToVector3(tokens[5]);
-            t.zSprite.Position = pos;
-            t.zSprite.SetScale(scale.X, scale.Y);
-            zTiles.Add(t);
+            var t = new SpriteTile(Path.Make(Path.Map, tokens[1]), pos, scale.X, scale.Y);
+            Tiles.Add(t);
         }
 
         private Vector3 StringToVector3(string v)
@@ -78,9 +83,19 @@ namespace Mu
             return result;
         }
 
+        /// <summary>
+        /// Warp player to Empty tile by name
+        /// </summary>
+        /// <param name="name"></param>
+        public void GotoEmpty(string name)
+        {
+            Globals.Players[0].Position = Tiles.First(t => t.GetName() == name).GetPosition();
+            Globals.Players[0].Position.Z = ZLayer.Npc;
+        }
+
         public void Destroy()
         {
-            foreach (Tile t in zTiles)
+            foreach (Tile t in Tiles)
                 t.Destroy();
         }
     }
@@ -106,6 +121,26 @@ namespace Mu
             Globals.Client.SendReady();
             Globals.Players[0].StartUpdatingPos();
             Globals.Chat = new Chat();
+        }
+
+        public void ChangeMap(string dstMap, string entryPoint)
+        {
+            //change map first
+            Globals.Players[0].Map = dstMap.StringToMobmap();
+
+            //stop sending staff to server and unload map
+            Globals.Players[0].StopUpdatingPos();
+            Globals.Client.SendQuit();
+            Globals.Client.DestroyMobs();
+            Map.Destroy();
+            while (Globals.Players.Count > 1)
+                Globals.Players.Last.Destroy();
+
+            //load map staff            
+            InitMap();
+            Map.GotoEmpty(entryPoint);
+            Globals.Client.SendReady();
+            Globals.Players[0].StartUpdatingPos();
         }
 
         public void Exit()
@@ -138,7 +173,7 @@ namespace Mu
 
         private void InitMap()
         {
-            Map = new Map(Path.Make(Path.Map, Map.MobmapToString(Globals.Players[0].Map)));
+            Map = new Map(Path.Make(Path.Map, Globals.Players[0].Map.MobmapToString()));
         }
 
         private void InitHero()
@@ -156,14 +191,12 @@ namespace Mu
             Globals.GuiManager.Activity();
             Input();
             //server and client
-            if(Globals.Server != null)
-                Globals.Server.Activity();
+            Globals.Server?.Activity();
             Globals.Client.Activity();
             //players
             for (int i = 0; i < Globals.Players.Count; i++)
                 Globals.Players[i].Activity(i == 0);
             CameraLookAtPlayer();
-
             //i think this should be at the end
             base.Activity(firstTimeCalled);
         }
@@ -185,8 +218,8 @@ namespace Mu
                 Globals.Server.RemoveMobs();
             foreach (Event e in Events)
                 Globals.EventManager.RemoveEvent(e);
-            foreach (Hero h in Globals.Players)
-                h.Destroy();
+            while (Globals.Players.Count > 0)
+                Globals.Players.Last.Destroy();
             Globals.Players.Clear();
             Globals.GuiManager.Clear();
             Globals.Chat = null;

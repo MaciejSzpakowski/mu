@@ -67,6 +67,11 @@ namespace Mu
         /// <param name="tick">periodic triggering, 0 to trigger every frame</param>
         public Event AddEvent(IntFunction func, string name, bool front, TimeSpan delay, TimeSpan life, TimeSpan tick, EventType type = EventType.PostEvent)
         {
+            if (Debug.DebugMode && name == "debugevents")
+            {
+                foreach (Event ev in zEvents)
+                    Debug.Write(ev.zName);
+            }
             Event e = new Event(func, name, delay, life, tick);
             e.zType = type;
             if (front)
@@ -86,6 +91,11 @@ namespace Mu
         /// <param name="tick">periodic triggering, 0 to trigger every frame</param>
         public Event AddEvent(IntFunction func, string name, bool front = false, float delay=0, float life=0, float tick=0, EventType type = EventType.PostEvent)
         {
+            if (Debug.DebugMode && name == "debugevents")
+            {
+                foreach (Event ev in zEvents)
+                    Debug.Write(ev.zName);
+            }
             Event e = new Event(func, name, TimeSpan.FromSeconds(delay), TimeSpan.FromSeconds(life), TimeSpan.FromSeconds(tick));
             e.zType = type;
             if (front)

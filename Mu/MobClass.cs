@@ -13,7 +13,7 @@ namespace Mu
 {
     public enum MobClass
     {
-        Spider=1, BudgeDragon
+        Spider=1, BudgeDragon, Worm
     }
 
     public partial class Mob : Circle
@@ -25,6 +25,10 @@ namespace Mu
                 case MobClass.BudgeDragon:
                     File = "bdragon.achx";
                     Name = "Budge Dragon";
+                    break;
+                case MobClass.Worm:
+                    File = "worm.achx";
+                    Name = "Worm";
                     break;
             }
         }

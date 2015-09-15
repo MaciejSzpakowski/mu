@@ -83,6 +83,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Chat.cs" />
+    <Compile Include="DamageCircle.cs" />
     <Compile Include="LevelMapInput.cs" />
     <Compile Include="GuiManager.cs" />
     <Compile Include="Hero.cs" />

@@ -191,12 +191,33 @@ namespace Mu
                 Globals.Chat.Say(Globals.Players[0].Name, post);
             });
             //add mob
-            AddCommand("spawnmob", delegate (string[] toknes)
+            AddCommand("spawnmob", delegate (string[] tokens)
             {
-                for (int i = 0; i < 6; i++)
+                if (tokens.Length < 3)
                 {
-                    Mob m = Globals.Server.SpawnMob(MobClass.BudgeDragon, MobMap.Lorencia);
+                    Debug.Write("spawnmob <class> <count>");
+                    return;
                 }
+                int c = 0;
+                int count = 0;
+                if (!int.TryParse(tokens[1], out c) || !int.TryParse(tokens[2], out count))
+                {
+                    Debug.Write("spawnmob <int> <int>");
+                    return;
+                }
+                for (int i = 0; i < count; i++)
+                {
+                    Mob m = Globals.Server.SpawnMob((MobClass)c, Globals.Players[0].Map, 
+                        new Vector2(Globals.Players[0].X,Globals.Players[0].Y));
+                }
+            });
+            //debug events
+            AddCommand("events", delegate (string[] tokens)
+            {
+                Globals.EventManager.AddEvent(delegate ()
+                {
+                    return 0;
+                }, "debugevents");
             });
         }
     }

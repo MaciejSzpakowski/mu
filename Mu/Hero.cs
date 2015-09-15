@@ -24,7 +24,7 @@ namespace Mu
 
     public class Hero : PositionedObject
     {
-        private Circle Collider;
+        private Circle Collider; public Circle GetCollider => Collider;
         private Sprite Sprite;        
         private Text Label;
         private Sprite HealthBar;
@@ -41,6 +41,7 @@ namespace Mu
         public float ExperienceBoost;
         public TimeSpan Online; //how much time hero has been played
         public MobMap Map; //what map is it on
+
         //stats
         public long Gold;
         public long Level;
@@ -63,21 +64,24 @@ namespace Mu
             Netid = 0;
             Name = name;
             Class = heroClass;
+            Position.Z = ZLayer.Npc;
+            WalkingSpeed = 10;
+
             SpriteManager.AddPositionedObject(this);
+
             Collider = ShapeManager.AddCircle();
             Collider.AttachTo(this, false);
             Collider.Visible = false;
+
             Sprite = LoadSprite();
             Sprite.AttachTo(this, false);
             Sprite.Resize(4);
-            Sprite.AnimationSpeed = 0.1f;
-            Position.Z = ZLayer.Npc;
+            Sprite.AnimationSpeed = 0.1f;            
+
             Label = TextManager.AddText(name, Globals.Font);
             Label.AttachTo(this, false);
             Label.HorizontalAlignment = HorizontalAlignment.Center;
-            Label.RelativePosition = new Vector3(0, 4, ZLayer.NpcLabel - Position.Z);
-
-            WalkingSpeed = 10;
+            Label.RelativePosition = new Vector3(0, 4, ZLayer.NpcLabel - Position.Z);            
 
             InitStats();
         }
@@ -177,7 +181,10 @@ namespace Mu
         {
             float delta = 0;
             Vector3.Distance(ref Target, ref Position, out delta);
-            if (delta > 0.1f)
+            //if it's too far, teleport
+            if (delta > 5)
+                Position = Target;
+            else if (delta > 0.1f)
             {
                 Velocity = Target - Position;
                 Velocity.Normalize();
@@ -208,6 +215,11 @@ namespace Mu
         public void StartUpdatingPos()
         {
             Globals.EventManager.AddEvent(UpdatePos, "updatepos", false, 0, 0, 0.1f);
+        }
+
+        public void StopUpdatingPos()
+        {
+            Globals.EventManager.RemoveEvent("updatepos");
         }
 
         private int UpdatePos()

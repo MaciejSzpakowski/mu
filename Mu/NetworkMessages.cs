@@ -29,6 +29,10 @@ namespace Mu
                 case MsgHeader.Chat:
                     RelayMessage(c, data, RelaySwitch.All);
                     break;
+                case MsgHeader.Quit: //tell everyone in the room to disconnect
+                    foreach (var c1 in c.Room.Clients.Where(c2 => c2 != c))
+                        c1.SendRemovePlayer(c);
+                    break;
                 default:
                     throw new ArgumentException("Unhandled message received by server");
             }
@@ -69,9 +73,8 @@ namespace Mu
             //resend
             if (rswitch == RelaySwitch.Room)
             {
-                for (int i = 0; i < c.Room.Clients.Count; i++)
-                    if (c.Room.Clients[i] != c)
-                        c.Room.Clients[i].zSendMessage(relaymsg);
+                foreach( ServerClient c1 in c.Room.Clients.Where(c2=>c2 != c))
+                    c1.zSendMessage(relaymsg);
             }
             else
             {
@@ -91,7 +94,7 @@ namespace Mu
             client.Hero.Name = data[0] as string;
             client.Hero.Class = (HeroClass)Convert.ToChar(data[1]);
             MobMap heroMap = (MobMap)Convert.ToChar(data[2]);
-            TransferClient(client, MobMap.Lorencia, heroMap);
+            TransferClient(client, heroMap);
             client.Hero.Position = new Vector3(0, 0, 0);
             //tell old players about new player and new player about old players
             foreach (var c in client.Room.Clients.Where(c1 => c1 != client))
@@ -104,11 +107,11 @@ namespace Mu
                 client.SendNewMob(m);
         }
 
-        private void TransferClient(ServerClient c, MobMap src, MobMap dst)
-        {
-            c.Room = Rooms[dst];
+        private void TransferClient(ServerClient c, MobMap dst)
+        {            
             ClientMutex.WaitOne();
-            Rooms[src].Clients.Remove(c);
+            c.Room.Clients.Remove(c);
+            c.Room = Rooms[dst];
             Rooms[dst].Clients.Add(c);
             ClientMutex.ReleaseMutex();
         }
@@ -131,6 +134,8 @@ namespace Mu
 
         private void ProcessMessage(Message msg)
         {
+            if (Transfering)
+                return;
             byte[] data = msg.Data;
             byte header = data[0];
             if (Debug.DebugMode && data[0] != MsgHeader.PlayerPos && data[0] != MsgHeader.Mobpos)
@@ -171,16 +176,13 @@ namespace Mu
             var data = Functions.GetData(rawdata);
             Mob m = GetMobFromNetid((int)data[0]);
             m.Target = new Vector3((float)data[1], (float)data[2], ZLayer.Npc);
-            if (m.Netid == 1)
-                Debug.Write($"New target {m.Target} received");
         }
 
         private void AddMob(byte[] rawdata)
         {
             var data = Functions.GetData(rawdata);
-            Mob m = Mob.MobClient((MobClass)data[0]);
+            Mob m = Mob.MobClient((MobClass)data[0], new Vector2((float)data[2], (float)data[3]));
             m.Netid = (int)data[1];
-            m.Position = new Vector3((float)data[2], (float)data[3], ZLayer.Npc);
             m.Target = m.Position;            
             Mobs.Add(m);
         }        
@@ -232,6 +234,7 @@ namespace Mu
         /// </summary>
         public void SendReady()
         {
+            Transfering = false;
             Hero h = Globals.Players[0];
             SendMessage(MsgHeader.ClientReady, h.Name, (char)h.Class, (char)h.Map);
         }
@@ -250,6 +253,12 @@ namespace Mu
         public void SendChat(string text, byte flags)
         {
             SendMessage(MsgHeader.Chat, text, flags);
+        }
+
+        public void SendQuit()
+        {
+            Transfering = true;
+            SendMessage(MsgHeader.Quit);
         }
     }
     
@@ -273,9 +282,11 @@ namespace Mu
 
         public void SendMobTarget(Mob m)
         {
-            if (m.Netid == 1)
-                Debug.Write($"New target {m.Target} sent");
             SendMessage(MsgHeader.Mobpos, m.Netid, m.Target.X, m.Target.Y);
+        }
+
+        public void SendHitPlayer(Mob m)
+        {
         }
     }
 
@@ -290,5 +301,7 @@ namespace Mu
         public const byte Chat = 6;
         public const byte Newmob = 7;
         public const byte Mobpos = 8;
+        public const byte Quit = 9;
+        public const byte HitPlayer = 10;
     }
 }
